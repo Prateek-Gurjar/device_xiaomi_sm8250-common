@@ -58,7 +58,9 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
             R.string.thermal_camera,
             R.string.thermal_dialer,
             R.string.thermal_gaming,
-            R.string.thermal_streaming
+            R.string.thermal_streaming,
+            R.string.thermal_navigation,
+            R.string.thermal_video
     };
 
     private AllPackagesAdapter mAllPackagesAdapter;
