@@ -27,6 +27,7 @@ import android.view.Display;
 import android.view.Display.HdrCapabilities;
 import androidx.preference.PreferenceManager;
 
+import org.lineageos.settings.doze.PocketService;
 import org.lineageos.settings.dirac.DiracUtils;
 import org.lineageos.settings.thermal.ThermalUtils;
 import org.lineageos.settings.refreshrate.RefreshUtils;
@@ -57,6 +58,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         RefreshUtils.startService(context);
         TouchSamplingUtils.restoreSamplingValue(context);
         GpuManagerUtils.applySavedSettings(context);
+        PocketService.startService(context);
         FileUtils.enableService(context);
         overrideHdrTypes(context);
 
