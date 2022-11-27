@@ -22,3 +22,7 @@ allow devicesettings_app vendor_sysfs_graphics:file rw_file_perms;
 # Allow devicesettings_app to access battery sysfs for charge bypass
 allow devicesettings_app vendor_sysfs_battery_supply:dir search;
 allow devicesettings_app vendor_sysfs_battery_supply:file rw_file_perms;
+
+# Miui Sepolicy for Vendor Audio Files
+allow devicesettings_app vendor_audio_data_file:dir {write add_name search};
+allow devicesettings_app vendor_audio_data_file:file {read write create getattr append open};
