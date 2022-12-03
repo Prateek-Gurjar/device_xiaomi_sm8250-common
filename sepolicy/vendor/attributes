@@ -12,3 +12,7 @@ attribute vendor_hal_citsensorservice_xiaomi_server;
 attribute hal_vibratorfeature_xiaomi;
 attribute hal_vibratorfeature_xiaomi_client;
 attribute hal_vibratorfeature_xiaomi_server;
+
+attribute hal_dms;
+attribute hal_dms_client;
+attribute hal_dms_server;
