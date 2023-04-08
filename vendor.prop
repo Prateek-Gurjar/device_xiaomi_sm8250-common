@@ -142,6 +142,9 @@ persist.vendor.btstack.enable.lpa=true
 persist.vendor.camera.perflock.enable=0
 vendor.display.enable_camera_smooth=1
 
+# Camera
+persist.vendor.camera.logInfoMask=false
+
 # Chipset
 ro.soc.manufacturer=QTI
 ro.soc.model=SM8250
