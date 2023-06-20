@@ -56,6 +56,9 @@ ro.vendor.xiaomi.bl.poll                        u:object_r:vendor_displayfeature
 vendor.displayfeature.entry.enable              u:object_r:vendor_displayfeature_prop:s0
 vendor.hbm.enable                               u:object_r:vendor_displayfeature_prop:s0
 
+# Fastcharge HAL
+persist.vendor.sec.fastchg_enabled              u:object_r:vendor_fastcharge_prop:s0
+
 # Fingerprint
 gf.debug.                                       u:object_r:vendor_fingerprint_prop:s0
 persist.vendor.fpc.                             u:object_r:vendor_fingerprint_prop:s0
