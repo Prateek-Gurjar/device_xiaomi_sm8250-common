@@ -7,6 +7,9 @@
 # Target VNDK Fallback version
 PRODUCT_EXTRA_VNDK_VERSIONS := 30 31 32 33 34
 
+# Build ViPER4AndroidFX
+$(call inherit-product, packages/apps/ViPER4AndroidFX/config.mk)
+
 # Setup dalvik vm configs
 $(call inherit-product, frameworks/native/build/phone-xhdpi-6144-dalvik-heap.mk)
 
