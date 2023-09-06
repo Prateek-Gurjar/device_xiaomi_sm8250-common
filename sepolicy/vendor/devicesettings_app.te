@@ -29,3 +29,11 @@ allow devicesettings_app vendor_audio_data_file:file {read write create getattr 
 
 # Allow KProfiles to be adjusted by a devicesettings_app
 allow devicesettings_app sysfs_kprofiles:file rw_file_perms;
+
+# DisplayFeature
+hal_client_domain(devicesettings_app, vendor_hal_displayfeature_xiaomi)
+binder_call(devicesettings_app, vendor_hal_displayfeature_xiaomi)
+
+allow devicesettings_app {
+  vendor_hal_displayfeature_xiaomi_hwservice
+}:hwservice_manager find;

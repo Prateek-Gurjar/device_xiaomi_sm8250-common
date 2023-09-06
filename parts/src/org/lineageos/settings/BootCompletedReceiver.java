@@ -18,6 +18,7 @@
 package org.lineageos.settings;
 
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -39,6 +40,7 @@ import org.lineageos.settings.touchsampling.TouchSamplingUtils;
 import org.lineageos.settings.kernelmanager.KernelManagerUtils;
 import org.lineageos.settings.gpumanager.GpuManagerUtils;
 import org.lineageos.settings.utils.FileUtils;
+import org.lineageos.settings.display.ColorService;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
 
@@ -59,6 +61,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         }
         ThermalUtils.startService(context);
         RefreshUtils.startService(context);
+        ColorService.startService(context);
         TouchSamplingUtils.restoreSamplingValue(context);
         KernelManagerUtils.applySavedSettings(context);
         GpuManagerUtils.applySavedSettings(context);
