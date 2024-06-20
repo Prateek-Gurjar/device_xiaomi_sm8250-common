@@ -57,4 +57,8 @@
 
     <!-- Whether to show double tap ambient settings -->
     <bool name="config_supports_double_tap_ambient" translatable="false">true</bool>
+
+    <!-- Indicates whether device has a side mounted fingerprint sensor,
+         but a dedicated one, i.e. not embedded in the power button. -->
+    <bool name="config_is_side_fps" translatable="false">true</bool>
 </resources>
