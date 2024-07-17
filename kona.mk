@@ -177,6 +177,9 @@ PRODUCT_PACKAGES += \
     libcamera2ndk_vendor \
     libgui_vendor \
     liblz4.vendor \
+    libpiex \
+    libpiex_shim \
+    libpng.vendor \
     libstdc++_vendor \
     libutilscallstack.vendor \
     vendor.qti.hardware.camera.device@1.0.vendor \
@@ -502,7 +505,8 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.frameworks.sensorservice@1.0.vendor \
     android.hardware.sensors@1.0-impl-xiaomi \
-    android.hardware.sensors@1.0-service
+    android.hardware.sensors@1.0-service \
+    android.frameworks.sensorservice@1.0
 
 PRODUCT_PACKAGES += \
     libsensorndkbridge
