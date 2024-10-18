@@ -386,6 +386,9 @@
     <!-- Whether the new Auto Selection Network UI should be shown -->
     <bool name="config_enableNewAutoSelectNetworkUI">true</bool>
 
+    <!-- the number of the max cached processes in the system. -->
+    <integer name="config_customizedMaxCachedProcesses">96</integer>
+
     <!-- Enables or disables fading edges when marquee is enabled in TextView.
           Off by default, since the framebuffer readback used to implement the
           fading edges is prohibitively expensive on most GPUs. -->
