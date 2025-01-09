@@ -163,6 +163,9 @@ PRODUCT_PACKAGES += \
     vendor.display.config@1.9.vendor \
     vendor.qti.hardware.memtrack-service
 
+PRODUCT_PACKAGES += \
+    gralloc.qcom
+
 $(call soong_config_set,qtidisplay,gralloc_handle_has_reserved_size,true)
 
 # Dolby
