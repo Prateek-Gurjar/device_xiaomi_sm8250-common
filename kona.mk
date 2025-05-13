@@ -159,6 +159,8 @@ PRODUCT_PACKAGES += \
     vendor.display.config@1.9.vendor \
     vendor.qti.hardware.memtrack-service
 
+$(call soong_config_set,qtidisplay,gralloc_handle_has_reserved_size,true)
+
 # DRM
 PRODUCT_PACKAGES += \
     android.hardware.drm-service.clearkey
