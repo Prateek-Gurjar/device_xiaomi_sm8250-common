@@ -17,6 +17,9 @@ persist.vendor.color.matrix=2
 # FUSE
 persist.sys.fuse.passthrough.enable=true
 
+# Fake encryption
+ro.crypto.state=encrypted
+
 # Fwk detect
 ro.vendor.qti.va_aosp.support=1
 
