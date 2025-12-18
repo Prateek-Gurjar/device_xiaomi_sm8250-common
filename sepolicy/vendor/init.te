@@ -4,3 +4,6 @@ set_prop(init, vendor_fingerprint_prop)
 
 # Bind the app-readable FastRPC shell copy over the vendor DSP image.
 allow init adsprpcd_file:file mounton;
+
+# Charge bypass - input_suspend node
+allow init vendor_sysfs_battery_supply:file rw_file_perms;
