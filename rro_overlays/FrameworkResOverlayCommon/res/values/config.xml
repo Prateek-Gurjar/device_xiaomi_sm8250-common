@@ -459,4 +459,10 @@
         <item>255</item>   <!-- at 5000 lux = 100% -->
     </integer-array>
 
+   <!-- Whether the current device's internal display can host desktop sessions.  -->
+    <bool name="config_canInternalDisplayHostDesktops">true</bool>
+
+    <!-- Whether desktop mode is supported on the current device  -->
+    <bool name="config_isDesktopModeSupported">true</bool>
+
 </resources>
