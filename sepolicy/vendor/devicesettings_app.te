@@ -26,3 +26,6 @@ allow devicesettings_app vendor_sysfs_battery_supply:file rw_file_perms;
 # Miui Sepolicy for Vendor Audio Files
 allow devicesettings_app vendor_audio_data_file:dir {write add_name search};
 allow devicesettings_app vendor_audio_data_file:file {read write create getattr append open};
+
+# Allow KProfiles to be adjusted by a devicesettings_app
+allow devicesettings_app sysfs_kprofiles:file rw_file_perms;
