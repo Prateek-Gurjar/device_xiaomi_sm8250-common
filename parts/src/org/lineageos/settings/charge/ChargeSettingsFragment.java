@@ -43,11 +43,18 @@ public class ChargeSettingsFragment extends PreferenceFragmentCompat
         if (bypassChargePreference != null) {
             bypassChargePreference.setEnabled(bypassChargeSupported);
             if (bypassChargeSupported) {
-                bypassChargePreference.setChecked(chargeUtils.isBypassChargeEnabled());
                 bypassChargePreference.setOnPreferenceChangeListener(this);
             } else {
                 bypassChargePreference.setSummary(R.string.charge_bypass_unavailable);
             }
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (bypassChargePreference != null && chargeUtils != null) {
+            bypassChargePreference.setChecked(chargeUtils.isBypassChargeEnabled());
         }
     }
 
@@ -72,14 +79,10 @@ public class ChargeSettingsFragment extends PreferenceFragmentCompat
                         .setTitle(R.string.charge_bypass_title)
                         .setMessage(R.string.charge_bypass_warning)
                         .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                            chargeUtils.enableBypassCharge(true);
-                            if (bypassChargePreference != null) {
-                                bypassChargePreference.setChecked(true);
-                            }
-                            try {
-                                BypassChargeTileService.updateTile(requireActivity());
-                            } catch (Exception e) {
-                            }
+                            boolean enabled = chargeUtils.enableBypassCharge(true);
+                            bypassChargePreference.setChecked(enabled);
+                            if (!enabled) showWriteFailed();
+                            BypassChargeTileService.updateTile(requireActivity());
                         })
                         .setNegativeButton(android.R.string.cancel, (dialog, which) -> {
                             if (bypassChargePreference != null) {
@@ -89,14 +92,25 @@ public class ChargeSettingsFragment extends PreferenceFragmentCompat
                         .show();
                 return false;
             } else {
-                chargeUtils.enableBypassCharge(false);
-                try {
-                    BypassChargeTileService.updateTile(requireActivity());
-                } catch (Exception e) {
+                boolean disabled = chargeUtils.enableBypassCharge(false);
+                if (!disabled) {
+                    showWriteFailed();
+                    bypassChargePreference.setChecked(true);
+                    return false;
                 }
+                BypassChargeTileService.updateTile(requireActivity());
                 return true;
             }
         }
         return false;
+    }
+
+    private void showWriteFailed() {
+        if (!isAdded()) return;
+        new AlertDialog.Builder(requireActivity())
+                .setTitle(R.string.charge_bypass_title)
+                .setMessage(R.string.charge_bypass_write_failed)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
 }

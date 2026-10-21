@@ -16,6 +16,7 @@
 
 package org.lineageos.settings.charge;
 
+import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.Handler;
@@ -24,11 +25,11 @@ import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
 import android.util.Log;
 import android.widget.Toast;
-
 import org.lineageos.settings.R;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BypassChargeTileService extends TileService {
 
@@ -36,6 +37,7 @@ public class BypassChargeTileService extends TileService {
     private ChargeUtils chargeUtils;
     private ExecutorService executorService;
     private Handler mainHandler;
+    private final AtomicBoolean operationInProgress = new AtomicBoolean(false);
 
     @Override
     public void onCreate() {
@@ -48,72 +50,106 @@ public class BypassChargeTileService extends TileService {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (executorService != null && !executorService.isShutdown()) {
-            executorService.shutdown();
-        }
+        if (executorService != null) executorService.shutdown();
     }
 
     @Override
     public void onStartListening() {
         super.onStartListening();
-        executorService.execute(() -> {
-            boolean enabled = chargeUtils.isBypassChargeEnabled();
-            mainHandler.post(() -> updateTileUI(enabled));
-        });
+        refreshTile();
     }
 
     @Override
     public void onClick() {
         super.onClick();
+        if (!operationInProgress.compareAndSet(false, true)) return;
 
-        Tile tile = getQsTile();
-        if (tile == null) {
-            return;
-        }
+        executorService.execute(() -> {
+            Boolean enabled = chargeUtils.getBypassChargeState();
+            if (!chargeUtils.isBypassChargeSupported() || enabled == null) {
+                mainHandler.post(() -> {
+                    updateTileUI(null);
+                    finishOperation();
+                });
+                return;
+            }
 
-        int currentState = tile.getState();
-        boolean newEnabled = currentState != Tile.STATE_ACTIVE;
+            if (enabled) {
+                boolean success = chargeUtils.enableBypassCharge(false);
+                mainHandler.post(() -> {
+                    if (!success) showToast(R.string.charge_bypass_write_failed);
+                    refreshTile();
+                    finishOperation();
+                });
+                return;
+            }
 
-        if (newEnabled) {
-            executorService.execute(() -> {
-                ChargeUtils.SafetyCheckResult safetyCheck = chargeUtils.performSafetyChecks();
-
+            ChargeUtils.SafetyCheckResult safetyCheck = chargeUtils.performSafetyChecks();
+            mainHandler.post(() -> {
                 if (!safetyCheck.isSafe()) {
-                    mainHandler.post(() -> {
-                        Toast.makeText(this, 
-                                getString(R.string.charge_bypass_safety_failed, 
-                                        safetyCheck.getReason()),
-                                Toast.LENGTH_LONG).show();
-                        updateTileUI(false);
-                    });
+                    showToast(getString(R.string.charge_bypass_safety_failed,
+                            safetyCheck.getReason()));
+                    refreshTile();
+                    finishOperation();
                     return;
                 }
-
-                chargeUtils.enableBypassCharge(true);
-                mainHandler.post(() -> updateTileUI(true));
+                showDialog(new AlertDialog.Builder(this)
+                        .setTitle(R.string.charge_bypass_title)
+                        .setMessage(R.string.charge_bypass_warning)
+                        .setPositiveButton(android.R.string.ok, (dialog, which) ->
+                                executorService.execute(() -> {
+                                    boolean success = chargeUtils.enableBypassCharge(true);
+                                    mainHandler.post(() -> {
+                                        if (!success) showToast(R.string.charge_bypass_write_failed);
+                                        refreshTile();
+                                        finishOperation();
+                                    });
+                                }))
+                        .setNegativeButton(android.R.string.cancel, (dialog, which) -> {
+                            refreshTile();
+                            finishOperation();
+                        })
+                        .create());
             });
-        } else {
-            updateTileUI(false);
-            executorService.execute(() -> {
-                chargeUtils.enableBypassCharge(false);
-            });
-        }
+        });
     }
 
-    private void updateTileUI(boolean enabled) {
+    private void refreshTile() {
+        if (executorService == null || executorService.isShutdown()) return;
+        executorService.execute(() -> {
+            Boolean enabled = chargeUtils.isBypassChargeSupported()
+                    ? chargeUtils.getBypassChargeState() : null;
+            mainHandler.post(() -> updateTileUI(enabled));
+        });
+    }
+
+    private void finishOperation() {
+        operationInProgress.set(false);
+    }
+
+    private void updateTileUI(Boolean enabled) {
         Tile tile = getQsTile();
-        if (tile != null) {
+        if (tile == null) return;
+        if (enabled == null) {
+            tile.setState(Tile.STATE_UNAVAILABLE);
+        } else {
             tile.setState(enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
-            tile.updateTile();
         }
+        tile.updateTile();
+    }
+
+    private void showToast(int messageId) {
+        Toast.makeText(this, messageId, Toast.LENGTH_LONG).show();
+    }
+
+    private void showToast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
 
     public static void updateTile(Context context) {
         try {
-            requestListeningState(
-                    context,
-                    new ComponentName(context, BypassChargeTileService.class)
-            );
+            requestListeningState(context,
+                    new ComponentName(context, BypassChargeTileService.class));
         } catch (Exception e) {
             Log.e(TAG, "Failed to request tile update", e);
         }

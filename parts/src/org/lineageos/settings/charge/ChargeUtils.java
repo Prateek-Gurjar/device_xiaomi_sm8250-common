@@ -19,55 +19,63 @@ package org.lineageos.settings.charge;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.os.BatteryManager;
 import android.util.Log;
-import androidx.preference.PreferenceManager;
 import org.lineageos.settings.utils.FileUtils;
 
 public class ChargeUtils {
 
     private static final String TAG = "ChargeUtils";
 
-    public static final String BYPASS_CHARGE_NODE = "/sys/class/power_supply/battery/input_suspend";
+    // battery_input_suspend votes battery charge current to zero. input_suspend
+    // suspends charger input and is not the bypass charging control.
+    public static final String BYPASS_CHARGE_NODE =
+            "/sys/class/power_supply/battery/battery_input_suspend";
     private static final String BATTERY_TEMP_NODE = "/sys/class/power_supply/battery/temp";
     private static final String BATTERY_CAPACITY_NODE = "/sys/class/power_supply/battery/capacity";
 
     private static final int MAX_BATTERY_TEMP = 450;
     private static final int MIN_BATTERY_CAPACITY = 20;
 
-    private static final String PREF_BYPASS_CHARGE = "bypass_charge";
-
-    public static final int BYPASS_DISABLED = 0;
-    public static final int BYPASS_ENABLED = 1;
-
     private final Context context;
-    private final SharedPreferences sharedPrefs;
 
     public ChargeUtils(Context context) {
-        this.context = context;
-        this.sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+        this.context = context.getApplicationContext();
+    }
+
+    /** Returns null if the node cannot be read or contains an invalid value. */
+    public Boolean getBypassChargeState() {
+        String value = FileUtils.readOneLine(BYPASS_CHARGE_NODE);
+        if ("0".equals(value)) return false;
+        if ("1".equals(value)) return true;
+        return null;
     }
 
     public boolean isBypassChargeEnabled() {
-        String value = FileUtils.readOneLine(BYPASS_CHARGE_NODE);
-        return "1".equals(value);
+        return Boolean.TRUE.equals(getBypassChargeState());
     }
 
-    public void enableBypassCharge(boolean enable) {
+    /** Writes and verifies the requested state. */
+    public boolean enableBypassCharge(boolean enable) {
         if (enable) {
             SafetyCheckResult safetyCheck = performSafetyChecks();
             if (!safetyCheck.isSafe()) {
                 Log.w(TAG, "Safety check failed: " + safetyCheck.getReason());
-                return;
+                return false;
             }
         }
 
-        if (FileUtils.writeLine(BYPASS_CHARGE_NODE, enable ? "1" : "0")) {
-            sharedPrefs.edit().putBoolean(PREF_BYPASS_CHARGE, enable).apply();
-        } else {
+        if (!FileUtils.writeLine(BYPASS_CHARGE_NODE, enable ? "1" : "0")) {
             Log.e(TAG, "Failed to write bypass charge status");
+            return false;
         }
+
+        Boolean state = getBypassChargeState();
+        if (state == null || state != enable) {
+            Log.e(TAG, "Bypass charge status did not match requested state");
+            return false;
+        }
+        return true;
     }
 
     private boolean isNodeAccessible(String node) {
@@ -80,85 +88,80 @@ public class ChargeUtils {
 
     public SafetyCheckResult performSafetyChecks() {
         if (!isBypassChargeSupported()) {
-            return new SafetyCheckResult(false, "Bypass charging not supported on this device");
+            return new SafetyCheckResult(false, "Bypass charging is not supported on this device");
         }
 
-        if (!isACChargerConnected()) {
-            return new SafetyCheckResult(false, "AC charger not connected");
+        if (!isExternalChargerConnected()) {
+            return new SafetyCheckResult(false, "Connect a charger before enabling bypass charging");
         }
 
         int batteryTemp = getBatteryTemperature();
+        if (batteryTemp < 0) {
+            return new SafetyCheckResult(false, "Unable to read battery temperature");
+        }
         if (batteryTemp >= MAX_BATTERY_TEMP) {
-            return new SafetyCheckResult(false, 
-                String.format("Battery temperature too high (%.1f°C)", batteryTemp / 10.0f));
+            return new SafetyCheckResult(false,
+                    String.format("Battery temperature too high (%.1f°C)", batteryTemp / 10.0f));
         }
 
         int batteryLevel = getBatteryCapacity();
+        if (batteryLevel < 0 || batteryLevel > 100) {
+            return new SafetyCheckResult(false, "Unable to read battery level");
+        }
         if (batteryLevel < MIN_BATTERY_CAPACITY) {
-            return new SafetyCheckResult(false, 
-                String.format("Battery level too low (%d%%)", batteryLevel));
+            return new SafetyCheckResult(false,
+                    String.format("Battery level too low (%d%%)", batteryLevel));
         }
 
         return new SafetyCheckResult(true, "All safety checks passed");
     }
 
-    private boolean isACChargerConnected() {
-        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        Intent batteryStatus = context.registerReceiver(null, filter);
+    private boolean isExternalChargerConnected() {
+        Intent batteryStatus = context.registerReceiver(null,
+                new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (batteryStatus == null) return false;
 
-        if (batteryStatus == null) {
-            return false;
-        }
-
-        int chargePlug = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-        boolean isCharging = chargePlug == BatteryManager.BATTERY_PLUGGED_AC;
-
-        Log.d(TAG, "Charger status - plugged: " + chargePlug + ", isAC: " + isCharging);
-        return isCharging;
+        int plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0);
+        int supportedSources = BatteryManager.BATTERY_PLUGGED_AC
+                | BatteryManager.BATTERY_PLUGGED_USB
+                | BatteryManager.BATTERY_PLUGGED_USB_C
+                | BatteryManager.BATTERY_PLUGGED_WIRELESS;
+        return (plugged & supportedSources) != 0;
     }
 
     private int getBatteryTemperature() {
-        String tempStr = FileUtils.readOneLine(BATTERY_TEMP_NODE);
-        if (tempStr != null) {
-            try {
-                return Integer.parseInt(tempStr.trim());
-            } catch (NumberFormatException e) {
-                Log.e(TAG, "Failed to parse battery temperature from sysfs", e);
-            }
-        }
+        int temperature = readInteger(BATTERY_TEMP_NODE);
+        if (temperature > 0) return temperature;
 
-        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        Intent batteryStatus = context.registerReceiver(null, filter);
+        Intent batteryStatus = context.registerReceiver(null,
+                new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (batteryStatus == null) return -1;
 
-        if (batteryStatus != null) {
-            int temp = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
-            Log.d(TAG, "Battery temperature from BatteryManager: " + temp);
-            return temp;
-        }
-
-        Log.w(TAG, "Unable to read battery temperature");
-        return 0;
+        temperature = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
+        return temperature > 0 ? temperature : -1;
     }
 
     private int getBatteryCapacity() {
-        String capacityStr = FileUtils.readOneLine(BATTERY_CAPACITY_NODE);
-        if (capacityStr != null) {
-            try {
-                return Integer.parseInt(capacityStr.trim());
-            } catch (NumberFormatException e) {
-                Log.e(TAG, "Failed to parse battery capacity from sysfs", e);
-            }
-        }
+        int capacity = readInteger(BATTERY_CAPACITY_NODE);
+        if (capacity >= 0 && capacity <= 100) return capacity;
 
-        BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
-        if (batteryManager != null) {
-            int level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-            Log.d(TAG, "Battery capacity from BatteryManager: " + level);
-            return level;
-        }
+        BatteryManager batteryManager =
+                (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+        if (batteryManager == null) return -1;
 
-        Log.w(TAG, "Unable to read battery capacity");
-        return 0;
+        capacity = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+        return capacity >= 0 && capacity <= 100 ? capacity : -1;
+    }
+
+    private int readInteger(String node) {
+        String value = FileUtils.readOneLine(node);
+        if (value == null) return -1;
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            Log.e(TAG, "Failed to parse value from " + node, e);
+            return -1;
+        }
     }
 
     public static class SafetyCheckResult {
@@ -170,12 +173,7 @@ public class ChargeUtils {
             this.reason = reason;
         }
 
-        public boolean isSafe() {
-            return safe;
-        }
-
-        public String getReason() {
-            return reason;
-        }
+        public boolean isSafe() { return safe; }
+        public String getReason() { return reason; }
     }
 }
