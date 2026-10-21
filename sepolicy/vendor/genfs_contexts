@@ -148,3 +148,13 @@ genfscon sysfs /devices/virtual/touch/touch_dev/palm_sensor                     
 
 # Awinic haptic resonance calibration (stock sysfs_f0_value).
 genfscon sysfs /devices/platform/soc/a8c000.i2c/i2c-2/2-005a/f0_value u:object_r:vendor_sysfs_f0_value:s0
+
+# CPU hotplug controls exposed by XiaomiParts. Keep CPU 0 fixed online.
+genfscon sysfs /devices/system/cpu/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu1/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu2/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu3/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu4/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu5/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu6/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu7/online u:object_r:vendor_sysfs_corecontrol:s0
