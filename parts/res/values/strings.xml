@@ -76,8 +76,10 @@
 
     <!-- Clear Speaker -->
     <string name="clear_speaker_title">Clear speaker</string>
-    <string name="clear_speaker_summary">Play a 30-second audio to clear the speaker</string>
-    <string name="clear_speaker_description">Run this feature once or twice if you find that your speaker is lightly blocked by dust. Set media volume to maximum.\n\nIf the speaker is blocked heavily, run this feature 2–5 times while shaking your device with the speaker facing downwards.\n\nWARNING: Ensure that any headphones are unplugged.</string>
+    <string name="clear_speaker_summary">Play a 30-second tone to help clear the speaker</string>
+    <string name="clear_speaker_description">Before starting, raise media volume using the volume buttons and disconnect headphones. Playback follows the audio route selected by Android.\n\nRun once or twice if the speaker is lightly blocked by dust. If it is heavily blocked, repeat 2–5 times with the speaker facing downwards.\n\nUse a comfortable volume and stop if the speaker sounds distorted.</string>
+    <string name="clear_speaker_volume_hint">Raise media volume for stronger playback.</string>
+    <string name="clear_speaker_route_hint">Playback is not routed to the built-in speaker. Disconnect the audio device and try again.</string>
 
     <!-- Dirac settings -->
     <string name="dirac_enable">Use Mi Sound Enhancer</string>

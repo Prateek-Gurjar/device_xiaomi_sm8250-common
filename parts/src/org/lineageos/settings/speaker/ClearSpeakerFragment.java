@@ -18,12 +18,14 @@ package org.lineageos.settings.speaker;
 
 import android.content.res.AssetFileDescriptor;
 import android.media.AudioAttributes;
+import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.preference.Preference;
 import androidx.preference.SwitchPreferenceCompat;
@@ -41,7 +43,7 @@ public class ClearSpeakerFragment extends SettingsBasePreferenceFragment impleme
     private static final String PREF_CLEAR_SPEAKER = "clear_speaker_pref";
     private static final int PLAY_DURATION_MS = 30000;
 
-    private Handler mHandler = new Handler(Looper.getMainLooper());
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     private MediaPlayer mMediaPlayer;
     private SwitchPreferenceCompat mClearSpeakerPref;
 
@@ -68,45 +70,84 @@ public class ClearSpeakerFragment extends SettingsBasePreferenceFragment impleme
 
     @Override
     public void onStop() {
-        super.onStop();
         stopPlaying();
+        super.onStop();
     }
 
     public boolean startPlaying() {
-        getActivity().setVolumeControlStream(AudioManager.STREAM_MUSIC);
-        mMediaPlayer = new MediaPlayer();
-        mMediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build());
-        mMediaPlayer.setLooping(true);
-        try (AssetFileDescriptor afd = getResources().openRawResourceFd(
-                R.raw.clear_speaker_sound)) {
-            mMediaPlayer.setDataSource(afd);
-            mMediaPlayer.setVolume(1.0f, 1.0f);
-            mMediaPlayer.prepare();
-            mMediaPlayer.start();
-            mClearSpeakerPref.setEnabled(false);
-        } catch (IOException | IllegalArgumentException e) {
+        AudioManager audioManager = getContext().getSystemService(AudioManager.class);
+        if (audioManager == null) {
+            return false;
+        }
+
+        if (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                < audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)) {
+            Toast.makeText(getContext(), R.string.clear_speaker_volume_hint,
+                    Toast.LENGTH_LONG).show();
+        }
+
+        try {
+            getActivity().setVolumeControlStream(AudioManager.STREAM_MUSIC);
+            mMediaPlayer = new MediaPlayer();
+            mMediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build());
+            mMediaPlayer.setLooping(true);
+            mMediaPlayer.setOnErrorListener((player, what, extra) -> {
+                Log.e(TAG, "Speaker cleaning playback failed: what=" + what + ", extra=" + extra);
+                stopPlaying();
+                return true;
+            });
+            mMediaPlayer.setOnCompletionListener(player -> stopPlaying());
+            mMediaPlayer.addOnRoutingChangedListener(player -> {
+                AudioDeviceInfo routedDevice = player.getRoutedDevice();
+                if (routedDevice != null
+                        && routedDevice.getType() != AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+                    Toast.makeText(getContext(), R.string.clear_speaker_route_hint,
+                            Toast.LENGTH_LONG).show();
+                    stopPlaying();
+                }
+            }, mHandler);
+            try (AssetFileDescriptor afd = getResources().openRawResourceFd(
+                    R.raw.clear_speaker_sound)) {
+                mMediaPlayer.setDataSource(afd);
+                mMediaPlayer.setVolume(1.0f, 1.0f);
+                mMediaPlayer.prepare();
+                mMediaPlayer.start();
+                mClearSpeakerPref.setEnabled(false);
+            }
+        } catch (IOException | IllegalArgumentException | IllegalStateException e) {
             Log.e(TAG, "Failed to play speaker clean sound!", e);
+            releasePlayer();
             return false;
         }
         return true;
     }
 
     public void stopPlaying() {
-        if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
+        mHandler.removeCallbacksAndMessages(null);
+        if (mMediaPlayer != null) {
             try {
-                mMediaPlayer.stop();
+                if (mMediaPlayer.isPlaying()) {
+                    mMediaPlayer.stop();
+                }
             } catch (IllegalStateException e) {
                 Log.e(TAG, "Failed to stop media player!", e);
             } finally {
-                mMediaPlayer.reset();
-                mMediaPlayer.release();
-                mMediaPlayer = null;
+                releasePlayer();
             }
         }
-        mClearSpeakerPref.setEnabled(true);
-        mClearSpeakerPref.setChecked(false);
+        if (mClearSpeakerPref != null) {
+            mClearSpeakerPref.setEnabled(true);
+            mClearSpeakerPref.setChecked(false);
+        }
+    }
+
+    private void releasePlayer() {
+        if (mMediaPlayer != null) {
+            mMediaPlayer.release();
+            mMediaPlayer = null;
+        }
     }
 }
