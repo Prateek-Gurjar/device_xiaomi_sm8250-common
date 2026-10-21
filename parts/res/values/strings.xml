@@ -220,6 +220,10 @@
     <string name="saturation_title">Display Saturation</string>
     <string name="saturation_summary">Control the saturation level of the display</string>
     <string name="saturation_footer_summary">Changing the color mode in display settings will override the saturation level, requiring it to be reapplied.</string>
+    <string name="per_app_saturation_enable">Per-app saturation</string>
+    <string name="per_app_saturation_apps">Choose apps</string>
+    <string name="per_app_saturation_apps_summary">Turn the saturation adjustment off for selected apps</string>
+    <string name="per_app_saturation_app_list">Apps using saturation</string>
 
     <!-- Custom seekbar -->
     <string name="custom_seekbar_value">Value: <xliff:g id="v">%s</xliff:g></string>

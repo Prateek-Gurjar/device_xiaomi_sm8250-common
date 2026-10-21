@@ -41,6 +41,7 @@ import org.lineageos.settings.kernelmanager.KernelManagerUtils;
 import org.lineageos.settings.gpumanager.GpuManagerUtils;
 import org.lineageos.settings.utils.FileUtils;
 import org.lineageos.settings.display.ColorService;
+import org.lineageos.settings.saturation.PerAppSaturationService;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
 
@@ -62,6 +63,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         ThermalUtils.startService(context);
         RefreshUtils.startService(context);
         ColorService.startService(context);
+        context.startService(new Intent(context, PerAppSaturationService.class));
         TouchSamplingUtils.restoreSamplingValue(context);
         KernelManagerUtils.applySavedSettings(context);
         GpuManagerUtils.applySavedSettings(context);

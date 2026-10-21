@@ -31,6 +31,16 @@
         android:defaultValue="100"
         settings:continuousUpdates="true" />
 
+    <androidx.preference.SwitchPreferenceCompat
+        android:key="per_app_saturation_enabled"
+        android:title="@string/per_app_saturation_enable"
+        android:defaultValue="false" />
+
+    <Preference
+        android:key="per_app_saturation_manage"
+        android:title="@string/per_app_saturation_apps"
+        android:summary="@string/per_app_saturation_apps_summary" />
+
     <com.android.settingslib.widget.FooterPreference
         android:key="saturation_footer"  
         android:title="@string/saturation_footer_summary"

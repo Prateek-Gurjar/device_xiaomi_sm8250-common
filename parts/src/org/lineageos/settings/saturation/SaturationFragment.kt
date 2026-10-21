@@ -17,6 +17,7 @@
 package org.lineageos.settings.saturation
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.os.IBinder
 import android.os.Parcel
@@ -31,6 +32,7 @@ import android.widget.ImageView
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
+import androidx.preference.SwitchPreferenceCompat
 import androidx.viewpager.widget.PagerAdapter
 import androidx.viewpager.widget.ViewPager
 import com.android.settingslib.widget.LayoutPreference
@@ -60,8 +62,22 @@ class SaturationFragment : PreferenceFragmentCompat(), Preference.OnPreferenceCh
         mSaturationPreference = findPreference(Constants.KEY_SATURATION)
         mSaturationPreference?.setOnPreferenceChangeListener(this)
 
+        findPreference<SwitchPreferenceCompat>(Constants.KEY_PER_APP_SATURATION_ENABLED)
+            ?.setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as Boolean
+                val service = Intent(requireContext(), PerAppSaturationService::class.java)
+                if (enabled) requireContext().startService(service)
+                true
+            }
+        findPreference<Preference>("per_app_saturation_manage")?.setOnPreferenceClickListener {
+            startActivity(Intent(requireContext(), PerAppSaturationActivity::class.java))
+            true
+        }
+
         val seekBarValue = sharedPrefs?.getInt(Constants.KEY_SATURATION, 100) ?: 100
-        updateSaturation(seekBarValue)
+        if (sharedPrefs?.getBoolean(Constants.KEY_PER_APP_SATURATION_ENABLED, false) != true) {
+            updateSaturation(seekBarValue)
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -71,7 +87,10 @@ class SaturationFragment : PreferenceFragmentCompat(), Preference.OnPreferenceCh
     override fun onPreferenceChange(preference: Preference, newValue: Any?): Boolean {
         if (preference == mSaturationPreference) {
             val seekBarValue = newValue as Int
-            updateSaturation(seekBarValue)
+            if (!PreferenceManager.getDefaultSharedPreferences(requireContext())
+                    .getBoolean(Constants.KEY_PER_APP_SATURATION_ENABLED, false)) {
+                updateSaturation(seekBarValue)
+            }
             return true
         }
         return false
