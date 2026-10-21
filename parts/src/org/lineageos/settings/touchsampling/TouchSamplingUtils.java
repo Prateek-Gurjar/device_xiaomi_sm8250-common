@@ -18,31 +18,67 @@
 package org.lineageos.settings.touchsampling;
 
 import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.content.SharedPreferences;
-import android.os.UserHandle;
-import android.provider.Settings;
 import android.util.Log;
+
 import androidx.preference.PreferenceManager;
 
 import org.lineageos.settings.utils.FileUtils;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.BufferedReader;
-import java.io.FileReader;
 
 public final class TouchSamplingUtils {
 
     private static final String TAG = "TouchSamplingUtils";
     public static final String HTSR_FILE = "/sys/devices/virtual/touch/touch_dev/bump_sample_rate";
+    public static final String STATE_PREFS = "SHAREDHTSR";
+    private static final String STATE_KEY = "SHAREDHTSR";
+    private static final String LEGACY_ENABLE_KEY = "htsr_enable";
+
+    private TouchSamplingUtils() { }
+
+    public static boolean isSupported() {
+        File node = new File(HTSR_FILE);
+        return node.exists() && node.canRead() && node.canWrite();
+    }
+
+    public static boolean isEnabled() {
+        return "1".equals(FileUtils.readOneLine(HTSR_FILE));
+    }
+
+    public static boolean setEnabled(Context context, boolean enabled) {
+        if (!isSupported() || !FileUtils.writeLine(HTSR_FILE, enabled ? "1" : "0")) {
+            return false;
+        }
+        saveEnabled(context, enabled);
+        return true;
+    }
+
+    private static void saveEnabled(Context context, boolean enabled) {
+        context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE).edit()
+                .putInt(STATE_KEY, enabled ? 1 : 0).apply();
+    }
 
     public static void restoreSamplingValue(Context context) {
-        SharedPreferences sharedPref = context.getSharedPreferences(TouchSamplingSettingsFragment.SHAREDHTSR, Context.MODE_PRIVATE);
-        Integer htsrstate = sharedPref.getInt(TouchSamplingSettingsFragment.SHAREDHTSR, 0);
-        FileUtils.writeLine(HTSR_FILE, htsrstate.toString());
+        if (!isSupported()) {
+            Log.i(TAG, "Touch sampling node is unavailable or not writable");
+            return;
+        }
+
+        SharedPreferences statePrefs = context.getSharedPreferences(
+                STATE_PREFS, Context.MODE_PRIVATE);
+        boolean enabled;
+        if (statePrefs.contains(STATE_KEY)) {
+            enabled = statePrefs.getInt(STATE_KEY, 0) != 0;
+        } else {
+            // Migrate the value saved by earlier builds that only used the default prefs.
+            SharedPreferences defaultPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+            enabled = defaultPrefs.getBoolean(LEGACY_ENABLE_KEY, false);
+            saveEnabled(context, enabled);
+        }
+
+        if (!FileUtils.writeLine(HTSR_FILE, enabled ? "1" : "0")) {
+            Log.w(TAG, "Unable to restore touch sampling state");
+        }
     }
 }
