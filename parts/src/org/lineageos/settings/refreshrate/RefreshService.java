@@ -16,55 +16,86 @@
 
 package org.lineageos.settings.refreshrate;
 
-import android.app.ActivityManager;
 import android.app.ActivityTaskManager;
 import android.app.ActivityTaskManager.RootTaskInfo;
 import android.app.IActivityTaskManager;
-import android.app.TaskStackListener;
 import android.app.Service;
+import android.app.TaskStackListener;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Handler;
 import android.os.IBinder;
-import android.util.Log;
 import android.os.RemoteException;
+import android.util.Log;
+
+import androidx.preference.PreferenceManager;
 
 public class RefreshService extends Service {
 
     private static final String TAG = "RefreshService";
-    private static final boolean DEBUG = true;
-
-    private String mPreviousApp;
+    private static final String KEY_SESSION_ACTIVE = "refresh_session_active";
+    private static final String KEY_BASELINE_MIN = "refresh_baseline_min";
+    private static final String KEY_BASELINE_MAX = "refresh_baseline_max";
     private RefreshUtils mRefreshUtils;
     private IActivityTaskManager mActivityTaskManager;
+    private String mPreviousApp;
+    private float mDefaultMinRate;
+    private float mDefaultMaxRate;
+    private boolean mReceiverRegistered;
+    private boolean mTaskListenerRegistered;
+    private boolean mHasManagedProfile;
+    private android.content.SharedPreferences mPreferences;
+    private final android.content.SharedPreferences.OnSharedPreferenceChangeListener
+            mPreferenceListener = (preferences, key) -> {
+                if ("refresh_control".equals(key)) {
+                    mPreviousApp = null;
+                    updateForegroundApp();
+                }
+            };
 
-    private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            mPreviousApp = "";
+            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                mPreviousApp = null;
+            } else {
+                updateForegroundApp();
+            }
+        }
+    };
+
+    private final TaskStackListener mTaskListener = new TaskStackListener() {
+        @Override
+        public void onTaskStackChanged() {
+            updateForegroundApp();
         }
     };
 
     @Override
     public void onCreate() {
-        if (DEBUG) Log.d(TAG, "Creating service");
+        super.onCreate();
+        mRefreshUtils = new RefreshUtils(this);
+        mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        mPreferences.registerOnSharedPreferenceChangeListener(mPreferenceListener);
+        mHasManagedProfile = mPreferences.getBoolean(KEY_SESSION_ACTIVE, false);
+        mDefaultMinRate = mPreferences.getFloat(KEY_BASELINE_MIN,
+                mRefreshUtils.getCurrentMinRate());
+        mDefaultMaxRate = mPreferences.getFloat(KEY_BASELINE_MAX,
+                mRefreshUtils.getCurrentMaxRate());
+        registerReceiver();
         try {
             mActivityTaskManager = ActivityTaskManager.getService();
             mActivityTaskManager.registerTaskStackListener(mTaskListener);
+            mTaskListenerRegistered = true;
         } catch (RemoteException e) {
-            // Do nothing
+            Log.e(TAG, "Unable to register task stack listener", e);
         }
-        mRefreshUtils = new RefreshUtils(this);
-        registerReceiver();
-        super.onCreate();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (DEBUG) Log.d(TAG, "Starting service");
+        updateForegroundApp();
         return START_STICKY;
     }
 
@@ -76,35 +107,69 @@ public class RefreshService extends Service {
     private void registerReceiver() {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_OFF);
-        filter.addAction(Intent.ACTION_SCREEN_ON);        
-        this.registerReceiver(mIntentReceiver, filter);
+        filter.addAction(Intent.ACTION_SCREEN_ON);
+        registerReceiver(mIntentReceiver, filter);
+        mReceiverRegistered = true;
     }
 
-    private final TaskStackListener mTaskListener = new TaskStackListener() {
-        @Override
-        public void onTaskStackChanged() {
-            try {
-                final RootTaskInfo info = mActivityTaskManager.getFocusedRootTaskInfo();
-                if (info == null || info.topActivity == null) {
-                    return;
-                }
-                String foregroundApp = info.topActivity.getPackageName();
-                int state = mRefreshUtils.getStateForPackage(foregroundApp);
-                
-                if (!mRefreshUtils.isAppInList) {
-                    mRefreshUtils.getOldRate();
-                }
+    private void updateForegroundApp() {
+        if (mActivityTaskManager == null || mRefreshUtils == null) return;
+        try {
+            RootTaskInfo info = mActivityTaskManager.getFocusedRootTaskInfo();
+            String foregroundApp = info == null || info.topActivity == null
+                    ? null : info.topActivity.getPackageName();
+            if (foregroundApp == null) {
+                restoreDefaultRate();
+                mPreviousApp = null;
+                return;
+            }
 
-                if (!foregroundApp.equals(mPreviousApp)) {
-                    mRefreshUtils.setRefreshRate(foregroundApp);
-                    mPreviousApp = foregroundApp;
+            int state = mRefreshUtils.getStateForPackage(foregroundApp);
+            if (!foregroundApp.equals(mPreviousApp)) {
+                if (state == RefreshUtils.STATE_DEFAULT && mHasManagedProfile) {
+                    restoreDefaultRate();
                 }
-                if (state == RefreshUtils.STATE_LAND && mRefreshUtils.isAppInList) {
-                    mRefreshUtils.checkOrientationAndSetRate(foregroundApp);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+                mRefreshUtils.applyProfile(foregroundApp, state,
+                        mDefaultMinRate, mDefaultMaxRate);
+                mHasManagedProfile = state != RefreshUtils.STATE_DEFAULT;
+                mPreferences.edit().putBoolean(KEY_SESSION_ACTIVE, mHasManagedProfile)
+                        .putFloat(KEY_BASELINE_MIN, mDefaultMinRate)
+                        .putFloat(KEY_BASELINE_MAX, mDefaultMaxRate).apply();
+                mPreviousApp = foregroundApp;
+            }
+        } catch (RemoteException e) {
+            Log.e(TAG, "Unable to get the foreground task", e);
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Failed to apply foreground refresh rate", e);
+        }
+    }
+
+    private void restoreDefaultRate() {
+        if (mRefreshUtils != null) {
+            mRefreshUtils.disableOrientationListener();
+            mRefreshUtils.setRefreshRate(mDefaultMinRate, mDefaultMaxRate);
+        }
+        mHasManagedProfile = false;
+        if (mPreferences != null) {
+            mPreferences.edit().putBoolean(KEY_SESSION_ACTIVE, false).apply();
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (mHasManagedProfile) restoreDefaultRate();
+        if (mRefreshUtils != null) mRefreshUtils.disableOrientationListener();
+        if (mReceiverRegistered) unregisterReceiver(mIntentReceiver);
+        if (mPreferences != null) {
+            mPreferences.unregisterOnSharedPreferenceChangeListener(mPreferenceListener);
+        }
+        if (mTaskListenerRegistered && mActivityTaskManager != null) {
+            try {
+                mActivityTaskManager.unregisterTaskStackListener(mTaskListener);
+            } catch (RemoteException e) {
+                Log.w(TAG, "Unable to unregister task stack listener", e);
             }
         }
-    };
+        super.onDestroy();
+    }
 }
