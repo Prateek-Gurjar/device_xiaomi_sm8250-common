@@ -14,134 +14,119 @@ import android.hardware.SensorManager;
 import android.os.IBinder;
 import android.os.PowerManager;
 import androidx.preference.PreferenceManager;
-import android.provider.Settings;
 
-import org.lineageos.settings.utils.FileUtils;
-import org.lineageos.settings.display.*;
-
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class AutoHBMService extends Service {
-    private static final String HBM = "/sys/class/drm/card0/card0-DSI-1/disp_param";
-    private static final String BACKLIGHT = "/sys/class/backlight/panel0-backlight/brightness";
-    private static final String SAVED_BRIGHTNESS = "hbm_saved_brightness";
-
-    private static boolean mAutoHBMActive = false;
-    private ExecutorService mExecutorService;
-
+    private ScheduledExecutorService mExecutor;
+    private ScheduledFuture<?> mPendingDisable;
     private SensorManager mSensorManager;
-    Sensor mLightSensor;
-
+    private Sensor mLightSensor;
     private SharedPreferences mSharedPrefs;
-    private boolean dcDimmingEnabled;
+    private volatile float mLatestLux;
+    private boolean mRegistered;
 
-    public void activateLightSensorRead() {
-        submit(() -> {
-            mSensorManager = (SensorManager) getApplicationContext().getSystemService(Context.SENSOR_SERVICE);
-            mLightSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
-            mSensorManager.registerListener(mSensorEventListener, mLightSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        });
-    }
-
-    public void deactivateLightSensorRead() {
-        submit(() -> {
-            mSensorManager.unregisterListener(mSensorEventListener);
-            mAutoHBMActive = false;
-            enableHBM(false);
-        });
-    }
-
-    private void enableHBM(boolean enable) {
-        if (enable) {
-            int current = Settings.System.getInt(getContentResolver(),
-                    Settings.System.SCREEN_BRIGHTNESS, 255);
-            mSharedPrefs.edit().putInt(SAVED_BRIGHTNESS, current).apply();
-            FileUtils.writeLine(HBM, "0x10000");
-            FileUtils.writeLine(BACKLIGHT, "2047");
-            Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 255);
-        } else {
-            FileUtils.writeLine(HBM, "0xF0000");
-            int saved = mSharedPrefs.getInt(SAVED_BRIGHTNESS, -1);
-            if (saved >= 0) {
-                Settings.System.putInt(getContentResolver(),
-                        Settings.System.SCREEN_BRIGHTNESS, saved);
-                FileUtils.writeLine(BACKLIGHT, String.valueOf(saved * 2047 / 255));
-                mSharedPrefs.edit().remove(SAVED_BRIGHTNESS).apply();
-            }
-        }
-    }
-
-    private boolean isCurrentlyEnabled() {
-        return FileUtils.getFileValueAsBoolean(HBM, false);
-    }
-
-    private SensorEventListener mSensorEventListener = new SensorEventListener() {
-
+    private final SensorEventListener mSensorEventListener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            float lux = event.values[0];
-            KeyguardManager km =
-                (KeyguardManager) getSystemService(getApplicationContext().KEYGUARD_SERVICE);
-            boolean keyguardShowing = km.inKeyguardRestrictedInputMode();
-            float luxThreshold = Float.parseFloat(mSharedPrefs.getString(HBMFragment.KEY_AUTO_HBM_THRESHOLD, "7000"));
-            long timeToDisableHBM = Long.parseLong(mSharedPrefs.getString(HBMFragment.KEY_HBM_DISABLE_TIME, "1"));
-
-            if (lux > luxThreshold) {
-                if ((!mAutoHBMActive || !isCurrentlyEnabled()) && !keyguardShowing && !dcDimmingEnabled) {
-                    mAutoHBMActive = true;
-                    enableHBM(true);
-                }
-            }
-            if (lux < luxThreshold) {
-                if (mAutoHBMActive) {
-                    mExecutorService.submit(() -> {
-                        try {
-                            Thread.sleep(timeToDisableHBM * 1000);
-                        } catch (InterruptedException e) {
-                        }
-                        if (lux < luxThreshold) {
-                            mAutoHBMActive = false;
-                            enableHBM(false);
-                        }
-                    });
+            if (event.values == null || event.values.length == 0) return;
+            synchronized (AutoHBMService.this) {
+                mLatestLux = event.values[0];
+                float threshold = getThreshold();
+                if (mLatestLux > threshold) {
+                    cancelPendingDisable();
+                    KeyguardManager keyguard = getSystemService(KeyguardManager.class);
+                    if (keyguard != null && !keyguard.isKeyguardLocked()) {
+                        HBMController.setAuto(AutoHBMService.this, true);
+                    }
+                } else if (HBMController.isAutoEnabled(AutoHBMService.this)) {
+                    scheduleDisable();
                 }
             }
         }
 
         @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-            // do nothing
-        }
+        public void onAccuracyChanged(Sensor sensor, int accuracy) { }
     };
 
-    private BroadcastReceiver mScreenStateReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mScreenStateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
+            if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
                 activateLightSensorRead();
-            } else if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
+            } else if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
                 deactivateLightSensorRead();
+                HBMController.disableAll(context);
             }
         }
     };
+
+    private float getThreshold() {
+        try {
+            return Float.parseFloat(mSharedPrefs.getString(
+                    HBMFragment.KEY_AUTO_HBM_THRESHOLD, "7000"));
+        } catch (NumberFormatException e) {
+            return 7000f;
+        }
+    }
+
+    private long getDisableDelaySeconds() {
+        try {
+            long seconds = Long.parseLong(mSharedPrefs.getString(
+                    HBMFragment.KEY_HBM_DISABLE_TIME, "1"));
+            return Math.max(1, Math.min(10, seconds));
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+
+    private synchronized void scheduleDisable() {
+        if (mPendingDisable != null && !mPendingDisable.isDone()) return;
+        mPendingDisable = mExecutor.schedule(() -> {
+            synchronized (AutoHBMService.this) {
+                if (mLatestLux <= getThreshold()) HBMController.setAuto(this, false);
+                mPendingDisable = null;
+            }
+        }, getDisableDelaySeconds(), TimeUnit.SECONDS);
+    }
+
+    private synchronized void cancelPendingDisable() {
+        if (mPendingDisable != null) {
+            mPendingDisable.cancel(false);
+            mPendingDisable = null;
+        }
+    }
+
+    private void activateLightSensorRead() {
+        if (mSensorManager == null || mLightSensor == null || mRegistered) return;
+        mRegistered = mSensorManager.registerListener(mSensorEventListener, mLightSensor,
+                SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    private void deactivateLightSensorRead() {
+        cancelPendingDisable();
+        if (mSensorManager != null && mRegistered) {
+            mSensorManager.unregisterListener(mSensorEventListener);
+            mRegistered = false;
+        }
+    }
 
     @Override
     public void onCreate() {
-        mExecutorService = Executors.newSingleThreadExecutor();
-        IntentFilter screenStateFilter = new IntentFilter(Intent.ACTION_SCREEN_ON);
-        screenStateFilter.addAction(Intent.ACTION_SCREEN_OFF);
-        registerReceiver(mScreenStateReceiver, screenStateFilter);
-        mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        if (pm.isInteractive()) {
-            activateLightSensorRead();
-        }
-    }
-
-    private Future < ? > submit(Runnable runnable) {
-        return mExecutorService.submit(runnable);
+        super.onCreate();
+        mExecutor = Executors.newSingleThreadScheduledExecutor();
+        mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        HBMController.setAuto(this, false);
+        mSensorManager = getSystemService(SensorManager.class);
+        if (mSensorManager != null) mLightSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+        IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+        registerReceiver(mScreenStateReceiver, filter);
+        PowerManager power = getSystemService(PowerManager.class);
+        if (power != null && power.isInteractive()) activateLightSensorRead();
     }
 
     @Override
@@ -151,16 +136,13 @@ public class AutoHBMService extends Service {
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
+        deactivateLightSensorRead();
+        HBMController.setAuto(this, false);
         unregisterReceiver(mScreenStateReceiver);
-        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        if (pm.isInteractive()) {
-            deactivateLightSensorRead();
-        }
+        if (mExecutor != null) mExecutor.shutdownNow();
+        super.onDestroy();
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+    public IBinder onBind(Intent intent) { return null; }
 }

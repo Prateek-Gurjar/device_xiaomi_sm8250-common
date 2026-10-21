@@ -18,7 +18,6 @@
 
 package org.lineageos.settings.hbm;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -27,24 +26,16 @@ import android.content.BroadcastReceiver;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
 import androidx.preference.PreferenceManager;
-import android.provider.Settings;
 
-import org.lineageos.settings.utils.FileUtils;
-import org.lineageos.settings.display.*;
+import org.lineageos.settings.display.DcDimmingTileService;
 
 public class HBMModeTileService extends TileService {
-
-    private static final String HBM = "/sys/class/drm/card0/card0-DSI-1/disp_param";
-    private static final String HBM_KEY = "hbm";
-    private static final String BACKLIGHT = "/sys/class/backlight/panel0-backlight/brightness";
-    private static final String SAVED_BRIGHTNESS = "hbm_saved_brightness";
 
     private BroadcastReceiver screenStateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
-                SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
-                sharedPrefs.edit().putBoolean(HBM_KEY, false).commit();
+                HBMController.disableAll(context);
                 updateUI(false);
             }
         }
@@ -52,6 +43,7 @@ public class HBMModeTileService extends TileService {
 
     private void updateUI(boolean enabled) {
         final Tile tile = getQsTile();
+        if (tile == null) return;
         tile.setState(enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
         tile.updateTile();
     }
@@ -73,8 +65,7 @@ public class HBMModeTileService extends TileService {
     @Override
     public void onStartListening() {
         super.onStartListening();
-        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-        updateUI(sharedPrefs.getBoolean(HBM_KEY, false));
+        updateUI(HBMController.isEnabled(this));
     }
 
     @Override
@@ -87,27 +78,14 @@ public class HBMModeTileService extends TileService {
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         final boolean dcDimmingEnabled = sharedPrefs.getBoolean(DcDimmingTileService.DC_DIMMING_ENABLE_KEY, false);
         if (dcDimmingEnabled) {
+            updateUI(HBMController.isEnabled(this));
             return;
         }
-        final boolean enabled = !(sharedPrefs.getBoolean(HBM_KEY, false));
-        if (enabled) {
-            int current = Settings.System.getInt(getContentResolver(),
-                    Settings.System.SCREEN_BRIGHTNESS, 255);
-            sharedPrefs.edit().putInt(SAVED_BRIGHTNESS, current).apply();
-            FileUtils.writeLine(BACKLIGHT, "2047");
-            Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 255);
+        if (HBMController.isEnabled(this)) {
+            HBMController.disableAll(this);
+        } else {
+            HBMController.setManual(this, true);
         }
-        FileUtils.writeLine(HBM, enabled ? "0x10000" : "0xF0000");
-        if (!enabled) {
-            int saved = sharedPrefs.getInt(SAVED_BRIGHTNESS, -1);
-            if (saved >= 0) {
-                Settings.System.putInt(getContentResolver(),
-                        Settings.System.SCREEN_BRIGHTNESS, saved);
-                FileUtils.writeLine(BACKLIGHT, String.valueOf(saved * 2047 / 255));
-                sharedPrefs.edit().remove(SAVED_BRIGHTNESS).apply();
-            }
-        }
-        sharedPrefs.edit().putBoolean(HBM_KEY, enabled).commit();
-        updateUI(enabled);
+        updateUI(HBMController.isEnabled(this));
     }
 }
