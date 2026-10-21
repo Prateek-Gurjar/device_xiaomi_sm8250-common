@@ -216,6 +216,36 @@
     <string name="kernel_manager_reset_done">CPU settings reset</string>
     <string name="kernel_manager_apply_failed">Could not apply CPU settings. Check kernel support and permissions.</string>
     <string name="kernel_manager_invalid_range">Minimum frequency must not exceed maximum frequency</string>
+
+    <!-- KGSL GPU Manager (Adreno 650 / munch) -->
+    <string name="gpu_manager_title">GPU manager</string>
+    <string name="gpu_manager_summary">Manage GPU frequency and power controls</string>
+    <string name="gpu_manager_unavailable">KGSL GPU controls are unavailable in this kernel</string>
+    <string name="gpu_manager_info">GPU information</string>
+    <string name="gpu_manager_model">GPU model</string>
+    <string name="gpu_manager_frequency">Current frequency</string>
+    <string name="gpu_manager_load">GPU busy</string>
+    <string name="gpu_manager_temperature">GPU temperature</string>
+    <string name="gpu_manager_thermal_level">Thermal power level</string>
+    <string name="gpu_manager_settings">GPU frequency</string>
+    <string name="gpu_manager_governor">GPU governor</string>
+    <string name="gpu_manager_min_frequency">Minimum frequency</string>
+    <string name="gpu_manager_max_frequency">Maximum frequency</string>
+    <string name="gpu_manager_power">Power controls</string>
+    <string name="gpu_manager_force_clk">Force GPU clock on</string>
+    <string name="gpu_manager_force_bus">Force GPU bus on</string>
+    <string name="gpu_manager_force_rail">Force GPU rail on</string>
+    <string name="gpu_manager_no_nap">Prevent GPU nap</string>
+    <string name="gpu_manager_bus_split">GPU bus split</string>
+    <string name="gpu_manager_actions">Actions</string>
+    <string name="gpu_manager_apply">Apply settings</string>
+    <string name="gpu_manager_apply_on_boot">Apply on boot</string>
+    <string name="gpu_manager_apply_on_boot_summary">Restore the selected KGSL settings at boot</string>
+    <string name="gpu_manager_reset">Reset defaults</string>
+    <string name="gpu_manager_invalid_range">Minimum frequency must not exceed maximum frequency</string>
+    <string name="gpu_manager_applied">GPU settings applied</string>
+    <string name="gpu_manager_reset_done">GPU settings reset</string>
+    <string name="gpu_manager_apply_failed">Could not apply GPU settings. Check kernel support and permissions.</string>
     <string name="core_0">Core 0 (Little, always online)</string>
     <string name="core_1">Core 1 (Little)</string>
     <string name="core_2">Core 2 (Little)</string>
