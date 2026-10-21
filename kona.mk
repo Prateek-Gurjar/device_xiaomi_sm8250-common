@@ -14,6 +14,10 @@ $(call inherit-product, hardware/qcom-caf/common/common.mk)
 PRODUCT_PACKAGES += \
     PocketMode
 
+# Debloat
+PRODUCT_PACKAGES += \
+    RemovePackagesSm8250Common
+
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/pocket/privapp-permissions-pocketmode.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/permissions/privapp-permissions-pocketmode.xml
 
