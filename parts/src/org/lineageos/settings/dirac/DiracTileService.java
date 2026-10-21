@@ -25,9 +25,11 @@ public class DiracTileService extends TileService {
             if (mDiracUtils == null) {
                 mDiracUtils = DiracUtils.getInstance(getApplicationContext());
             }
-            Boolean enabled = mDiracUtils.isAvailable() ? mDiracUtils.getDiracState() : null;
+            Boolean enabled = mDiracUtils.getDiracState();
             if (enabled != null) {
-                mDiracUtils.setEnabled(!enabled);
+                if (!mDiracUtils.setEnabled(!enabled)) {
+                    Log.w(TAG, "Dirac tile toggle was rejected");
+                }
             }
         } catch (RuntimeException e) {
             Log.e(TAG, "Unable to toggle Dirac", e);
@@ -42,7 +44,7 @@ public class DiracTileService extends TileService {
             if (mDiracUtils == null) {
                 mDiracUtils = DiracUtils.getInstance(getApplicationContext());
             }
-            Boolean enabled = mDiracUtils.isAvailable() ? mDiracUtils.getDiracState() : null;
+            Boolean enabled = mDiracUtils.getDiracState();
             if (enabled == null) {
                 tile.setState(Tile.STATE_UNAVAILABLE);
             } else {

@@ -44,6 +44,10 @@ public class DiracSound extends AudioEffect {
         return value[0];
     }
 
+    public boolean setEffectEnabled(boolean enabled) {
+        return setEnabled(enabled) == SUCCESS;
+    }
+
     public void setMusic(int enable) throws IllegalStateException,
             IllegalArgumentException, UnsupportedOperationException,
             RuntimeException {

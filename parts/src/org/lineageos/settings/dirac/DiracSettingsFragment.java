@@ -86,8 +86,7 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
     }
 
     private void refreshPreferences() {
-        Boolean diracState = mDiracUtils != null && mDiracUtils.isAvailable()
-                ? mDiracUtils.getDiracState() : null;
+        Boolean diracState = mDiracUtils != null ? mDiracUtils.getDiracState() : null;
         boolean available = diracState != null;
         boolean enabled = available && diracState;
         mUpdatingUi = true;
@@ -95,9 +94,11 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
         mSwitchBar.setChecked(enabled);
         mHeadsetType.setEnabled(enabled);
         mPreset.setEnabled(enabled);
-        mHifi.setEnabled(enabled);
+        boolean hifiAvailable = mDiracUtils != null && mDiracUtils.isHifiSupported();
+        mHifi.setVisible(hifiAvailable);
+        mHifi.setEnabled(enabled && hifiAvailable);
         mScenes.setEnabled(enabled);
-        if (available) {
+        if (available && hifiAvailable) {
             mHifi.setChecked(mDiracUtils.getHifiMode());
         }
         mUpdatingUi = false;
