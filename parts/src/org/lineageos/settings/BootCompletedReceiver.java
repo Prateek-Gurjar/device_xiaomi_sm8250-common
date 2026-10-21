@@ -32,7 +32,6 @@ import org.lineageos.settings.thermal.ThermalUtils;
 import org.lineageos.settings.refreshrate.RefreshUtils;
 import org.lineageos.settings.touchsampling.TouchSamplingUtils;
 import org.lineageos.settings.utils.FileUtils;
-import org.lineageos.settings.kernelmanager.KernelManagerUtils;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
 
@@ -56,7 +55,6 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         }
         RefreshUtils.startService(context);
         TouchSamplingUtils.restoreSamplingValue(context);
-        KernelManagerUtils.applySavedSettings(context);
         FileUtils.enableService(context);
         overrideHdrTypes(context);
 

@@ -166,13 +166,25 @@ public class KernelManagerFragment extends SettingsBasePreferenceFragment {
     }
 
     private boolean resetSettings() {
+        if (mPolicyPreferences.size() != mPolicies.length) {
+            Toast.makeText(getContext(), R.string.kernel_manager_policy_unavailable,
+                    Toast.LENGTH_SHORT).show();
+            return true;
+        }
         int[] managedPolicies = getManagedPolicies();
         List<String[]> ranges = new ArrayList<>();
         for (PolicyPreferences policy : mPolicyPreferences) {
+            List<String> available = KernelManagerUtils.getAvailableFrequencies(policy.cpu);
+            if (!available.contains(policy.frequencies[0])
+                    || !available.contains(policy.frequencies[policy.frequencies.length - 1])) {
+                Toast.makeText(getContext(), R.string.kernel_manager_policy_unavailable,
+                        Toast.LENGTH_SHORT).show();
+                return true;
+            }
             ranges.add(new String[]{policy.frequencies[0],
                     policy.frequencies[policy.frequencies.length - 1]});
         }
-        List<String> governors = KernelManagerUtils.getAvailableGovernors(managedPolicies);
+        List<String> governors = KernelManagerUtils.getAvailableGovernors(mPolicies);
         String governor = governors.contains("schedutil") ? "schedutil"
                 : (governors.isEmpty() ? "" : governors.get(0));
         if (governor.isEmpty() || !KernelManagerUtils.apply(managedPolicies, governor, ranges)) {
@@ -196,13 +208,30 @@ public class KernelManagerFragment extends SettingsBasePreferenceFragment {
         for (PolicyPreferences policy : mPolicyPreferences) {
             String min = policy.min.getValue();
             String max = policy.max.getValue();
+            List<String> available = KernelManagerUtils.getAvailableFrequencies(policy.cpu);
             if (!contains(policy.frequencies, min) || !contains(policy.frequencies, max)
-                    || Long.parseLong(min) > Long.parseLong(max)) {
+                    || !available.contains(min) || !available.contains(max)) {
+                Toast.makeText(getContext(), R.string.kernel_manager_invalid_range,
+                        Toast.LENGTH_SHORT).show();
+                return null;
+            }
+            try {
+                if (Long.parseLong(min) > Long.parseLong(max)) {
+                    Toast.makeText(getContext(), R.string.kernel_manager_invalid_range,
+                            Toast.LENGTH_SHORT).show();
+                    return null;
+                }
+            } catch (NumberFormatException e) {
                 Toast.makeText(getContext(), R.string.kernel_manager_invalid_range,
                         Toast.LENGTH_SHORT).show();
                 return null;
             }
             ranges.add(new String[]{min, max});
+        }
+        if (mPolicyPreferences.size() != mPolicies.length) {
+            Toast.makeText(getContext(), R.string.kernel_manager_policy_unavailable,
+                    Toast.LENGTH_SHORT).show();
+            return null;
         }
         return ranges;
     }
