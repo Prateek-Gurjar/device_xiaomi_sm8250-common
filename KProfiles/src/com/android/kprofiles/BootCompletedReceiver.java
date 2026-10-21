@@ -51,8 +51,14 @@ public class BootCompletedReceiver extends BroadcastReceiver {
             FileUtils.writeLine(KPROFILES_AUTO_NODE, kProfilesAutoEnabled ? ON : OFF);
         }
         if (IS_SUPPORTED) {
-            String kProfileMode = sharedPrefs.getString(KPROFILES_MODES_KEY, FileUtils.readOneLine(KPROFILES_MODES_NODE));
-            FileUtils.writeLine(KPROFILES_MODES_NODE, kProfileMode);
+            String kProfileMode = sharedPrefs.getString(KPROFILES_MODES_KEY, null);
+            if (kProfileMode == null) {
+                kProfileMode = FileUtils.readOneLine(KPROFILES_MODES_NODE);
+            }
+            if ("0".equals(kProfileMode) || "1".equals(kProfileMode)
+                    || "2".equals(kProfileMode) || "3".equals(kProfileMode)) {
+                FileUtils.writeLine(KPROFILES_MODES_NODE, kProfileMode);
+            }
         }
     }
 }

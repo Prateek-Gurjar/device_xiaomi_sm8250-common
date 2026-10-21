@@ -16,8 +16,10 @@
     <string name="kprofiles_title">KProfiles</string>
     <string name="kprofiles_summary">Managing Kernelspace profiles to achieve balancing in terms of battery backup and performance</string>
     <string name="kprofiles_auto_title">Use Auto KProfiles</string>
-    <string name="kprofiles_auto_summary">Automatically switch to battery mode when device screen turns off and back to default profile when screen turns on</string>
+    <string name="kprofiles_auto_summary">Switch to Battery mode when the screen turns off and restore the selected mode when it turns on</string>
     <string name="kprofiles_modes_title">KProfiles Modes</string>
+    <string name="kprofiles_tile_summary">Tap to cycle through KProfiles modes</string>
+    <string name="kprofiles_write_failed">Unable to update KProfiles. Check that the kernel supports it and try again.</string>
     <string name="kprofiles_modes_none">None</string>
     <string name="kprofiles_modes_battery">Battery</string>
     <string name="kprofiles_modes_balanced">Balanced</string>

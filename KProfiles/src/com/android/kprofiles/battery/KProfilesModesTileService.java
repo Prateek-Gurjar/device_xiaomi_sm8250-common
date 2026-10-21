@@ -13,6 +13,7 @@ import android.content.SharedPreferences;
 import android.os.UserHandle;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
+import android.widget.Toast;
 
 import androidx.preference.PreferenceManager;
 
@@ -22,12 +23,12 @@ import com.android.kprofiles.utils.FileUtils;
 public class KProfilesModesTileService extends TileService {
 
     private Context mContext;
-    private volatile boolean mSelfChange = false;
+    private boolean mReceiverRegistered = false;
 
     @Override
     public void onCreate() {
+        super.onCreate();
         if (IS_SUPPORTED) {
-            super.onCreate();
             mContext = getApplicationContext();
             return;
         }
@@ -60,13 +61,17 @@ public class KProfilesModesTileService extends TileService {
         IntentFilter filter = new IntentFilter();
         filter.addAction(INTENT_ACTION);
         mContext.registerReceiver(mServiceStateReceiver, filter, Context.RECEIVER_EXPORTED);
+        mReceiverRegistered = true;
 
         updateTileContent();
     }
 
     @Override
     public void onStopListening() {
-        mContext.unregisterReceiver(mServiceStateReceiver);
+        if (mReceiverRegistered) {
+            mContext.unregisterReceiver(mServiceStateReceiver);
+            mReceiverRegistered = false;
+        }
         super.onStopListening();
     }
 
@@ -88,19 +93,23 @@ public class KProfilesModesTileService extends TileService {
                 mode = "0"; // Set mode from performance to none
                 break;
         }
-        setMode(mode);
+        if (!setMode(mode)) return;
         updateTileContent(mode);
         super.onClick();
     }
 
-    private void setMode(String mode) {
-        FileUtils.writeLine(KPROFILES_MODES_NODE, mode);
-        mSelfChange = true;
+    private boolean setMode(String mode) {
+        if (!FileUtils.writeLine(KPROFILES_MODES_NODE, mode)) {
+            updateTileContent();
+            Toast.makeText(this, R.string.kprofiles_write_failed, Toast.LENGTH_LONG).show();
+            return false;
+        }
         Intent intent = new Intent(INTENT_ACTION);
         intent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
         mContext.sendBroadcastAsUser(intent, UserHandle.CURRENT);
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
         prefs.edit().putString(KPROFILES_MODES_KEY, mode).apply();
+        return true;
     }
 
     private String getMode() {
@@ -115,24 +124,24 @@ public class KProfilesModesTileService extends TileService {
     private void updateTileContent(String mode) {
         Tile tile = getQsTile();
         if (mode == null) mode = getMode();
+        if (!"0".equals(mode) && !"1".equals(mode) && !"2".equals(mode) && !"3".equals(mode)) {
+            mode = "0";
+        }
 
         tile.setState(!"0".equals(mode) ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+        tile.setSubtitle(getResources().getString(R.string.kprofiles_tile_summary));
         switch (mode) {
             case "0":
                 tile.setContentDescription(getResources().getString(R.string.kprofiles_modes_none));
-                tile.setSubtitle(getResources().getString(R.string.kprofiles_modes_none));
                 break;
             case "1":
                 tile.setContentDescription(getResources().getString(R.string.kprofiles_modes_battery));
-                tile.setSubtitle(getResources().getString(R.string.kprofiles_modes_battery));
                 break;
             case "2":
                 tile.setContentDescription(getResources().getString(R.string.kprofiles_modes_balanced));
-                tile.setSubtitle(getResources().getString(R.string.kprofiles_modes_balanced));
                 break;
             case "3":
                 tile.setContentDescription(getResources().getString(R.string.kprofiles_modes_performance));
-                tile.setSubtitle(getResources().getString(R.string.kprofiles_modes_performance));
                 break;
         }
         tile.updateTile();
@@ -142,10 +151,6 @@ public class KProfilesModesTileService extends TileService {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (!INTENT_ACTION.equals(intent.getAction())) return;
-            if (mSelfChange) {
-                mSelfChange = false;
-                return;
-            }
             updateTileContent();
         }
     };

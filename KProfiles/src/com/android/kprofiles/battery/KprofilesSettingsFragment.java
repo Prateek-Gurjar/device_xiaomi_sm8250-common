@@ -24,6 +24,7 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.UserHandle;
+import android.widget.Toast;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -44,7 +45,7 @@ public class KprofilesSettingsFragment extends SettingsBasePreferenceFragment im
     private SwitchPreferenceCompat kProfilesAutoPreference;
     private ListPreference kProfilesModesPreference;
     private Preference kProfilesModesInfo;
-    private boolean mSelfChange = false;
+    private boolean mReceiverRegistered = false;
 
     public static final String INTENT_ACTION = "com.android.kprofiles.battery.KPROFILE_CHANGED";
     public static final String KPROFILES_MODES_NODE = "/sys/kernel/kprofiles/kp_mode";
@@ -87,6 +88,7 @@ public class KprofilesSettingsFragment extends SettingsBasePreferenceFragment im
         IntentFilter filter = new IntentFilter();
         filter.addAction(INTENT_ACTION);
         getContext().registerReceiver(mServiceStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        mReceiverRegistered = true;
     }
 
     @Override
@@ -113,7 +115,10 @@ public class KprofilesSettingsFragment extends SettingsBasePreferenceFragment im
 
     @Override
     public void onDestroy() {
-        getContext().unregisterReceiver(mServiceStateReceiver);
+        if (mReceiverRegistered) {
+            getContext().unregisterReceiver(mServiceStateReceiver);
+            mReceiverRegistered = false;
+        }
         super.onDestroy();
     }
 
@@ -123,23 +128,28 @@ public class KprofilesSettingsFragment extends SettingsBasePreferenceFragment im
         switch (key) {
             case KPROFILES_AUTO_KEY:
                 final boolean enabled = (Boolean) newValue;
-                try {
-                    FileUtils.writeLine(KPROFILES_AUTO_NODE, enabled ? ON : OFF);
-                } catch(Exception e) { }
-                break;
+                if (!FileUtils.writeLine(KPROFILES_AUTO_NODE, enabled ? ON : OFF)) {
+                    showWriteError();
+                    return false;
+                }
+                return true;
             case KPROFILES_MODES_KEY:
                 final String value = (String) newValue;
-                try {
-                    FileUtils.writeLine(KPROFILES_MODES_NODE, value);
-                    updateTitle(value);
-                    mSelfChange = true;
-                    Intent intent = new Intent(INTENT_ACTION);
-                    intent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
-                    getContext().sendBroadcastAsUser(intent, UserHandle.CURRENT);
-                } catch(Exception e) { }
-                break;
+                if (!FileUtils.writeLine(KPROFILES_MODES_NODE, value)) {
+                    showWriteError();
+                    return false;
+                }
+                updateTitle(value);
+                Intent intent = new Intent(INTENT_ACTION);
+                intent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
+                getContext().sendBroadcastAsUser(intent, UserHandle.CURRENT);
+                return true;
         }
-        return true;
+        return false;
+    }
+
+    private void showWriteError() {
+        Toast.makeText(getContext(), R.string.kprofiles_write_failed, Toast.LENGTH_LONG).show();
     }
 
     @Override
@@ -200,10 +210,6 @@ public class KprofilesSettingsFragment extends SettingsBasePreferenceFragment im
         @Override
         public void onReceive(Context context, Intent intent) {
             if (!INTENT_ACTION.equals(intent.getAction())) return;
-            if (mSelfChange) {
-                mSelfChange = false;
-                return;
-            }
             updateValues();
         }
     };
