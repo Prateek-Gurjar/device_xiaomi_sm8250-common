@@ -3,7 +3,7 @@ allow system_app vendor_sysfs_corecontrol:dir search;
 allow system_app vendor_sysfs_corecontrol:file { getattr open read write };
 
 # CPU frequency governor and policy controls exposed by the munch kernel.
-allow system_app sysfs_devices_system_cpu:dir search;
+allow system_app sysfs_devices_system_cpu:dir { getattr open read search };
 allow system_app sysfs_devices_system_cpu:file { getattr open read write };
 
 # KGSL tuning exposed by XiaomiParts GPU manager.

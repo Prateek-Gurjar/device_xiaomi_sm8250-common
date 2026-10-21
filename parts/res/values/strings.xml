@@ -161,6 +161,7 @@
     <!-- CPU frequency and governor manager -->
     <string name="kernel_manager_title">CPU manager</string>
     <string name="kernel_manager_summary">Manage CPU governors and frequency limits</string>
+    <string name="kernel_manager_tile">CPU manager</string>
     <string name="kernel_manager_unavailable">No supported CPU frequency policies were found</string>
     <string name="cpu_governor_title">CPU governor</string>
     <string name="cpu_min_freq_title">Minimum frequency</string>
@@ -169,11 +170,12 @@
     <string name="kernel_manager_apply">Apply settings</string>
     <string name="kernel_manager_apply_summary">Apply the selected governor and frequency limits</string>
     <string name="kernel_manager_reset">Reset defaults</string>
-    <string name="kernel_manager_reset_summary">Use schedutil and the full frequency range</string>
+    <string name="kernel_manager_reset_summary">Use schedutil and the full available frequency range</string>
     <string name="kernel_manager_apply_on_boot">Apply on boot</string>
     <string name="kernel_manager_apply_on_boot_summary">Reapply saved settings after each boot</string>
-    <string name="kernel_manager_description">Frequency limits are constrained by the kernel and thermal service. Available values are read from each CPU policy at runtime.</string>
+    <string name="kernel_manager_description">Controls CPU governors and frequency limits only. Values come from each live CPU policy; the kernel and thermal service can still change the effective limits.</string>
     <string name="kernel_manager_frequency_unavailable">Frequency table is unavailable</string>
+    <string name="kernel_manager_policy_unavailable">A CPU policy changed or is unavailable. Reopen CPU manager and try again.</string>
     <string name="kernel_manager_applied">CPU settings applied</string>
     <string name="kernel_manager_reset_done">CPU settings reset</string>
     <string name="kernel_manager_apply_failed">Could not apply CPU settings. Check kernel support and permissions.</string>
