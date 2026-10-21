@@ -15,6 +15,21 @@ allow devicesettings_app sysfs_livedisplay_tuneable:file rw_file_perms;
 allow devicesettings_app vendor_sysfs_battery_supply:dir search;
 allow devicesettings_app vendor_sysfs_battery_supply:file rw_file_perms;
 
+# CPU hotplug, cpufreq and KGSL controls used by XiaomiParts.
+allow devicesettings_app vendor_sysfs_corecontrol:dir search;
+allow devicesettings_app vendor_sysfs_corecontrol:file { getattr open read write };
+allow devicesettings_app sysfs_devices_system_cpu:dir { getattr open read search };
+allow devicesettings_app sysfs_devices_system_cpu:file { getattr open read write };
+allow devicesettings_app sysfs_kgsl:dir search;
+allow devicesettings_app sysfs_kgsl:file { getattr open read write };
+allow devicesettings_app sysfs_kgsl:lnk_file read;
+allow devicesettings_app vendor_sysfs_kgsl_gpuclk:dir search;
+allow devicesettings_app vendor_sysfs_kgsl_gpuclk:file { getattr open read write };
+
+# Read battery telemetry for bypass charging safety checks.
+allow devicesettings_app sysfs_battery_supply:dir search;
+allow devicesettings_app sysfs_battery_supply:file r_file_perms;
+
 # Miui Sepolicy for Vendor Audio Files
 allow devicesettings_app vendor_audio_data_file:dir {write add_name search};
 allow devicesettings_app vendor_audio_data_file:file {read write create getattr append open};
