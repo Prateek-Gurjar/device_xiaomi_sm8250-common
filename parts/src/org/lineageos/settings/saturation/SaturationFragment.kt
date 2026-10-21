@@ -19,10 +19,6 @@ package org.lineageos.settings.saturation
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.os.IBinder
-import android.os.Parcel
-import android.os.RemoteException
-import android.os.ServiceManager
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
@@ -49,7 +45,6 @@ class SaturationFragment : PreferenceFragmentCompat(), Preference.OnPreferenceCh
     private var mDotIndicators: Array<ImageView>? = null
     private var mViewPagerImages: Array<View?>? = null
     private var mSaturationPreference: CustomSeekBarPreference? = null
-    private var mSurfaceFlinger: IBinder? = null
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.saturation, rootKey)
@@ -111,23 +106,7 @@ class SaturationFragment : PreferenceFragmentCompat(), Preference.OnPreferenceCh
     }
 
     private fun updateSaturation(seekBarValue: Int) {
-        val saturation = if (seekBarValue == 100) 1.001f else seekBarValue / 100.0f
-        mSurfaceFlinger?.let {
-            try {
-                val data = Parcel.obtain()
-                data.writeInterfaceToken("android.ui.ISurfaceComposer")
-                data.writeFloat(saturation)
-                it.transact(1022, data, null, 0)
-                data.recycle()
-            } catch (e: RemoteException) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
-        mSurfaceFlinger = ServiceManager.getService("SurfaceFlinger")
+        SaturationUtils.apply(seekBarValue)
     }
 
     fun restoreSaturationSetting(context: Context) {

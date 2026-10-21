@@ -8,11 +8,14 @@ import android.app.ActivityTaskManager;
 import android.app.Service;
 import android.app.TaskStackListener;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.database.ContentObserver;
+import android.os.Handler;
 import android.os.IBinder;
-import android.os.Parcel;
 import android.os.RemoteException;
-import android.os.ServiceManager;
+import android.os.UserHandle;
+import android.provider.Settings;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -32,6 +35,29 @@ public class PerAppSaturationService extends Service
     private boolean mPerAppEnabled;
     private String mTopPackage = "";
     private Set<String> mDisabledPackages = new HashSet<>();
+    private boolean mTaskListenerRegistered;
+    private final Handler mHandler = new Handler();
+
+    private final ContentObserver mColorModeObserver = new ContentObserver(mHandler) {
+        @Override
+        public void onChange(boolean selfChange) {
+            reapplyAfterColorModeChange();
+        }
+    };
+
+    private final android.content.BroadcastReceiver mScreenReceiver =
+            new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(android.content.Context context, Intent intent) {
+            if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
+                // ColorService restores the display mode 100 ms after screen-on.
+                mHandler.removeCallbacks(mReapplyRunnable);
+                mHandler.postDelayed(mReapplyRunnable, 200);
+            }
+        }
+    };
+
+    private final Runnable mReapplyRunnable = this::applyForTopPackage;
 
     private final TaskStackListener mTaskListener = new TaskStackListener() {
         @Override
@@ -46,22 +72,21 @@ public class PerAppSaturationService extends Service
         mPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         mPrefs.registerOnSharedPreferenceChangeListener(this);
         reloadPreferences();
-        try {
-            ActivityTaskManager.getService().registerTaskStackListener(mTaskListener);
-            updateTopPackage();
-        } catch (RemoteException | SecurityException e) {
-            Log.e(TAG, "Unable to monitor foreground app changes", e);
-            applyForTopPackage();
-        }
+        getContentResolver().registerContentObserver(
+                Settings.System.getUriFor(Settings.System.DISPLAY_COLOR_MODE), false,
+                mColorModeObserver, UserHandle.USER_CURRENT);
+        IntentFilter screenFilter = new IntentFilter(Intent.ACTION_SCREEN_ON);
+        registerReceiver(mScreenReceiver, screenFilter);
+        syncTaskListener();
+        updateTopPackage();
     }
 
     @Override
     public void onDestroy() {
-        try {
-            ActivityTaskManager.getService().unregisterTaskStackListener(mTaskListener);
-        } catch (RemoteException | SecurityException e) {
-            Log.w(TAG, "Unable to unregister task listener", e);
-        }
+        unregisterTaskListener();
+        getContentResolver().unregisterContentObserver(mColorModeObserver);
+        unregisterReceiver(mScreenReceiver);
+        mHandler.removeCallbacks(mReapplyRunnable);
         if (mPrefs != null) mPrefs.unregisterOnSharedPreferenceChangeListener(this);
         super.onDestroy();
     }
@@ -83,6 +108,7 @@ public class PerAppSaturationService extends Service
                 || Constants.KEY_PER_APP_SATURATION_ENABLED.equals(key)
                 || Constants.KEY_PER_APP_SATURATION_DISABLED_PACKAGES.equals(key)) {
             reloadPreferences();
+            syncTaskListener();
             applyForTopPackage();
         }
     }
@@ -93,6 +119,36 @@ public class PerAppSaturationService extends Service
         Set<String> disabled = mPrefs.getStringSet(
                 Constants.KEY_PER_APP_SATURATION_DISABLED_PACKAGES, null);
         mDisabledPackages = disabled == null ? new HashSet<>() : new HashSet<>(disabled);
+    }
+
+    private void syncTaskListener() {
+        if (mPerAppEnabled && !mTaskListenerRegistered) {
+            try {
+                ActivityTaskManager.getService().registerTaskStackListener(mTaskListener);
+                mTaskListenerRegistered = true;
+                updateTopPackage();
+            } catch (RemoteException | SecurityException e) {
+                Log.e(TAG, "Unable to monitor foreground app changes", e);
+            }
+        } else if (!mPerAppEnabled) {
+            unregisterTaskListener();
+        }
+    }
+
+    private void unregisterTaskListener() {
+        if (!mTaskListenerRegistered) return;
+        try {
+            ActivityTaskManager.getService().unregisterTaskStackListener(mTaskListener);
+        } catch (RemoteException | SecurityException e) {
+            Log.w(TAG, "Unable to unregister task listener", e);
+        } finally {
+            mTaskListenerRegistered = false;
+        }
+    }
+
+    private void reapplyAfterColorModeChange() {
+        mHandler.removeCallbacks(mReapplyRunnable);
+        mHandler.postDelayed(mReapplyRunnable, 200);
     }
 
     private void updateTopPackage() {
@@ -112,28 +168,10 @@ public class PerAppSaturationService extends Service
 
     private void applyForTopPackage() {
         boolean useSaturation = !mPerAppEnabled || !mDisabledPackages.contains(mTopPackage);
-        float value = useSaturation
-                ? (mSaturation == 100 ? 1.001f : mSaturation / 100.0f) : 1.0f;
-        applySaturation(value);
-    }
-
-    private void applySaturation(float value) {
-        IBinder surfaceFlinger = ServiceManager.getService("SurfaceFlinger");
-        if (surfaceFlinger == null) {
-            Log.e(TAG, "SurfaceFlinger is unavailable");
-            return;
-        }
-        Parcel data = Parcel.obtain();
-        try {
-            data.writeInterfaceToken("android.ui.ISurfaceComposer");
-            data.writeFloat(value);
-            if (!surfaceFlinger.transact(1022, data, null, 0)) {
-                Log.e(TAG, "SurfaceFlinger rejected saturation transaction");
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "Failed to apply saturation", e);
-        } finally {
-            data.recycle();
+        if (useSaturation) {
+            SaturationUtils.apply(mSaturation);
+        } else {
+            SaturationUtils.applyValue(1.0f);
         }
     }
 }
