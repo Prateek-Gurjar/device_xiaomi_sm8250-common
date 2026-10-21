@@ -17,27 +17,31 @@
 package org.lineageos.settings.dirac;
 
 import android.content.Context;
-import android.content.Intent;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.UserHandle;
-import android.os.SystemClock;
-import android.view.KeyEvent;
 import android.media.AudioManager;
 import android.media.session.MediaController;
 import android.media.session.MediaSessionManager;
 import android.media.session.PlaybackState;
+import android.util.Log;
 import java.util.List;
 
 public class DiracUtils {
 
+    private static final String TAG = "DiracUtils";
+    private static final int EQ_BAND_COUNT = 7;
+    private static final long PLAYBACK_REFRESH_DELAY_MS = 250;
+
     private static DiracUtils mInstance;
     private DiracSound mDiracSound;
     private MediaSessionManager mMediaSessionManager;
-    private Handler mHandler = new Handler();
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     private Context mContext;
+    private Runnable mPendingPlaybackRefresh;
 
     public DiracUtils(Context context) {
-        mContext = context;
+        mContext = context.getApplicationContext();
         mMediaSessionManager = (MediaSessionManager) context.getSystemService(Context.MEDIA_SESSION_SERVICE);
         mDiracSound = new DiracSound(0, 0);
     }
@@ -50,38 +54,6 @@ public class DiracUtils {
         return mInstance;
     }
 
-    private void triggerPlayPause(MediaController controller) {
-        long when = SystemClock.uptimeMillis();
-        final KeyEvent evDownPause = new KeyEvent(when, when, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PAUSE, 0);
-        final KeyEvent evUpPause = KeyEvent.changeAction(evDownPause, KeyEvent.ACTION_UP);
-        final KeyEvent evDownPlay = new KeyEvent(when, when, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY, 0);
-        final KeyEvent evUpPlay = KeyEvent.changeAction(evDownPlay, KeyEvent.ACTION_UP);
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                controller.dispatchMediaButtonEvent(evDownPause);
-            }
-        });
-        mHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                controller.dispatchMediaButtonEvent(evUpPause);
-            }
-        }, 20);
-        mHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                controller.dispatchMediaButtonEvent(evDownPlay);
-            }
-        }, 1000);
-        mHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                controller.dispatchMediaButtonEvent(evUpPlay);
-            }
-        }, 1020);
-    }
-
     private int getMediaControllerPlaybackState(MediaController controller) {
         if (controller != null) {
             final PlaybackState playbackState = controller.getPlaybackState();
@@ -92,55 +64,166 @@ public class DiracUtils {
         return PlaybackState.STATE_NONE;
     }
 
-    private void refreshPlaybackIfNecessary(){
-        if (mMediaSessionManager == null) return;
+    private void refreshPlaybackIfNecessary() {
+        if (mMediaSessionManager == null) {
+            return;
+        }
 
-        final List<MediaController> sessions
-                = mMediaSessionManager.getActiveSessionsForUser(
-                null, UserHandle.ALL);
-        for (MediaController aController : sessions) {
-            if (PlaybackState.STATE_PLAYING ==
-                    getMediaControllerPlaybackState(aController)) {
-                triggerPlayPause(aController);
-                break;
+        final List<MediaController> sessions;
+        try {
+            sessions = mMediaSessionManager.getActiveSessionsForUser(null, UserHandle.ALL);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to query active media sessions", e);
+            return;
+        }
+        for (MediaController controller : sessions) {
+            if (PlaybackState.STATE_PLAYING == getMediaControllerPlaybackState(controller)) {
+                schedulePlaybackRefresh(controller);
+                return;
             }
+        }
+        cancelPlaybackRefresh();
+    }
+
+    private void schedulePlaybackRefresh(final MediaController controller) {
+        cancelPlaybackRefresh();
+        // Keep the existing pause/resume refresh required by the vendor effect, but use
+        // transport controls and re-check playback state before resuming. A newer toggle
+        // cancels this work so an old request cannot restart playback later.
+        try {
+            if (controller.getTransportControls() == null) return;
+            controller.getTransportControls().pause();
+            mPendingPlaybackRefresh = new Runnable() {
+                @Override
+                public void run() {
+                    mPendingPlaybackRefresh = null;
+                    try {
+                        if (getMediaControllerPlaybackState(controller)
+                                == PlaybackState.STATE_PAUSED) {
+                            controller.getTransportControls().play();
+                        }
+                    } catch (RuntimeException e) {
+                        Log.w(TAG, "Unable to resume playback after audio refresh", e);
+                    }
+                }
+            };
+            mHandler.postDelayed(mPendingPlaybackRefresh, PLAYBACK_REFRESH_DELAY_MS);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to refresh active media session", e);
         }
     }
 
-    public void setEnabled(boolean enable) {
-        mDiracSound.setEnabled(enable);
-        mDiracSound.setMusic(enable ? 1 : 0);
-        refreshPlaybackIfNecessary();
+    private void cancelPlaybackRefresh() {
+        if (mPendingPlaybackRefresh != null) {
+            mHandler.removeCallbacks(mPendingPlaybackRefresh);
+            mPendingPlaybackRefresh = null;
+        }
+    }
+
+    public boolean isAvailable() {
+        return mDiracSound != null;
+    }
+
+    public Boolean getDiracState() {
+        try {
+            return mDiracSound == null ? null : mDiracSound.getMusic() == 1;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to read Dirac state", e);
+            return null;
+        }
     }
 
     public boolean isDiracEnabled() {
-        return mDiracSound != null && mDiracSound.getMusic() == 1;
+        Boolean enabled = getDiracState();
+        return enabled != null && enabled;
     }
 
-    public void setLevel(String preset) {
-        String[] level = preset.split("\\s*,\\s*");
-
-        for (int band = 0; band <= level.length - 1; band++) {
-            mDiracSound.setLevel(band, Float.valueOf(level[band]));
+    public boolean setEnabled(boolean enable) {
+        if (mDiracSound == null) return false;
+        cancelPlaybackRefresh();
+        try {
+            mDiracSound.setEnabled(enable);
+            mDiracSound.setMusic(enable ? 1 : 0);
+            refreshPlaybackIfNecessary();
+            return true;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to set Dirac enabled=" + enable, e);
+            return false;
         }
     }
 
-    public void setHeadsetType(int paramInt) {
-        mDiracSound.setHeadsetType(paramInt);
+    public boolean setLevel(String preset) {
+        if (mDiracSound == null || preset == null) return false;
+        String[] levels = preset.split(",", -1);
+        if (levels.length != EQ_BAND_COUNT) return false;
+        float[] parsedLevels = new float[EQ_BAND_COUNT];
+        try {
+            for (int band = 0; band < EQ_BAND_COUNT; band++) {
+                parsedLevels[band] = Float.parseFloat(levels[band].trim());
+                if (Float.isNaN(parsedLevels[band]) || Float.isInfinite(parsedLevels[band])) {
+                    return false;
+                }
+            }
+            for (int band = 0; band < EQ_BAND_COUNT; band++) {
+                mDiracSound.setLevel(band, parsedLevels[band]);
+            }
+            return true;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to apply EQ preset", e);
+            return false;
+        }
+    }
+
+    public boolean setHeadsetType(int type) {
+        if (mDiracSound == null) return false;
+        try {
+            mDiracSound.setHeadsetType(type);
+            return true;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to set headset type", e);
+            return false;
+        }
     }
 
     public boolean getHifiMode() {
-        AudioManager audioManager = mContext.getSystemService(AudioManager.class);
-        return audioManager.getParameters("hifi_mode").contains("true");
+        try {
+            AudioManager audioManager = mContext.getSystemService(AudioManager.class);
+            return audioManager != null
+                    && audioManager.getParameters("hifi_mode").contains("hifi_mode=true");
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to read Hi-Fi state", e);
+            return false;
+        }
     }
 
-    public void setHifiMode(int paramInt) {
-        AudioManager audioManager = mContext.getSystemService(AudioManager.class);
-        audioManager.setParameters("hifi_mode=" + (paramInt == 1 ? true : false));
-        mDiracSound.setHifiMode(paramInt);
+    public boolean setHifiMode(int mode) {
+        if (mDiracSound == null) return false;
+        try {
+            AudioManager audioManager = mContext.getSystemService(AudioManager.class);
+            if (audioManager == null) return false;
+            boolean previousMode = getHifiMode();
+            audioManager.setParameters("hifi_mode=" + (mode == 1));
+            try {
+                mDiracSound.setHifiMode(mode == 1 ? 1 : 0);
+            } catch (RuntimeException e) {
+                audioManager.setParameters("hifi_mode=" + previousMode);
+                throw e;
+            }
+            return true;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to set Hi-Fi mode", e);
+            return false;
+        }
     }
 
-    public void setScenario(int sceneInt) {
-        mDiracSound.setScenario(sceneInt);
+    public boolean setScenario(int scene) {
+        if (mDiracSound == null) return false;
+        try {
+            mDiracSound.setScenario(scene);
+            return true;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to set audio scenario", e);
+            return false;
+        }
     }
 }

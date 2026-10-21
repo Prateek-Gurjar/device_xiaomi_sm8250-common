@@ -1,41 +1,57 @@
 package org.lineageos.settings.dirac;
 
-import android.content.Context;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
-
-import org.lineageos.settings.R;
+import android.util.Log;
 
 public class DiracTileService extends TileService {
 
+    private static final String TAG = "DiracTileService";
     private DiracUtils mDiracUtils;
 
     @Override
     public void onStartListening() {
-        mDiracUtils = DiracUtils.getInstance(getApplicationContext());
-
-        Tile tile = getQsTile();
-        if (mDiracUtils.isDiracEnabled()) {
-            tile.setState(Tile.STATE_ACTIVE);
-        } else {
-            tile.setState(Tile.STATE_INACTIVE);
-        }
-
-        tile.updateTile();
         super.onStartListening();
+        refreshTile();
     }
 
     @Override
     public void onClick() {
+        super.onClick();
         Tile tile = getQsTile();
-        if (mDiracUtils.isDiracEnabled()) {
-            mDiracUtils.setEnabled(false);
-            tile.setState(Tile.STATE_INACTIVE);
-        } else {
-            mDiracUtils.setEnabled(true);
-            tile.setState(Tile.STATE_ACTIVE);
+        if (tile == null) return;
+
+        try {
+            if (mDiracUtils == null) {
+                mDiracUtils = DiracUtils.getInstance(getApplicationContext());
+            }
+            Boolean enabled = mDiracUtils.isAvailable() ? mDiracUtils.getDiracState() : null;
+            if (enabled != null) {
+                mDiracUtils.setEnabled(!enabled);
+            }
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Unable to toggle Dirac", e);
+        }
+        refreshTile();
+    }
+
+    private void refreshTile() {
+        Tile tile = getQsTile();
+        if (tile == null) return;
+        try {
+            if (mDiracUtils == null) {
+                mDiracUtils = DiracUtils.getInstance(getApplicationContext());
+            }
+            Boolean enabled = mDiracUtils.isAvailable() ? mDiracUtils.getDiracState() : null;
+            if (enabled == null) {
+                tile.setState(Tile.STATE_UNAVAILABLE);
+            } else {
+                tile.setState(enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+            }
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Unable to read Dirac state", e);
+            tile.setState(Tile.STATE_UNAVAILABLE);
         }
         tile.updateTile();
-        super.onClick();
     }
 }
