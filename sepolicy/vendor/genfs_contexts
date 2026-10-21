@@ -158,3 +158,12 @@ genfscon sysfs /devices/platform/soc/soc:oem_rf_cable/wakeup                    
 
 # Sensor
 genfscon sysfs /devices/virtual/touch/touch_dev/palm_sensor                                   u:object_r:vendor_sysfs_palm_sensor:s0
+# CPU hotplug controls exposed by XiaomiParts. Keep CPU 0 fixed online.
+genfscon sysfs /devices/system/cpu/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu1/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu2/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu3/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu4/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu5/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu6/online u:object_r:vendor_sysfs_corecontrol:s0
+genfscon sysfs /devices/system/cpu/cpu7/online u:object_r:vendor_sysfs_corecontrol:s0

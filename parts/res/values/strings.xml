@@ -186,4 +186,19 @@
     <string name="apps_title">Apps</string>
     <string name="search_apps_hint">Search apps</string>
     <string name="clear_search">Clear search</string>
+
+    <!-- CPU core control -->
+    <string name="core_control_title">Core control</string>
+    <string name="core_control_summary">Enable or disable individual CPU cores</string>
+    <string name="core_control_description">Turn CPU cores off to reduce power use or heat. At least two little cores must remain online. Changes may be reset by the kernel or thermal management.</string>
+    <string name="core_control_min_little_cores">At least two little cores must remain online</string>
+    <string name="core_control_write_failed">Could not change CPU core state</string>
+    <string name="core_0">Core 0 (Little, always online)</string>
+    <string name="core_1">Core 1 (Little)</string>
+    <string name="core_2">Core 2 (Little)</string>
+    <string name="core_3">Core 3 (Little)</string>
+    <string name="core_4">Core 4 (Big)</string>
+    <string name="core_5">Core 5 (Big)</string>
+    <string name="core_6">Core 6 (Big)</string>
+    <string name="core_7">Core 7 (Prime)</string>
 </resources>
