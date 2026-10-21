@@ -6,24 +6,25 @@
 
 #include "CameraProviderExtension.h"
 
+#include <algorithm>
 #include <fstream>
+#include <string>
 
 #define TORCH_BRIGHTNESS "brightness"
-#define TORCH_MAX_BRIGHTNESS "max_brightness"
-#define TOGGLE_SWITCH "/sys/devices/platform/soc/c440000.qcom,spmi/spmi-0/spmi0-05/c440000.qcom,spmi:qcom,pm8150l@5:qcom,leds@d300/leds/led:switch_2/brightness"
+#define TOGGLE_SWITCH "/sys/devices/platform/soc/c440000.qcom,spmi/spmi-0/spmi0-05/c440000.qcom,spmi:qcom,pm8150l@5:qcom,leds@d300/leds/led:switch_0/brightness"
 
-static std::string kTorchLedPaths[] = {
-        "/sys/devices/platform/soc/c440000.qcom,spmi/spmi-0/spmi0-05/c440000.qcom,spmi:qcom,pm8150l@5:qcom,leds@d300/leds/led:torch_0",
-        "/sys/devices/platform/soc/c440000.qcom,spmi/spmi-0/spmi0-05/c440000.qcom,spmi:qcom,pm8150l@5:qcom,leds@d300/leds/led:torch_1",
-};
+static const std::string kTorchLedPath =
+        "/sys/devices/platform/soc/c440000.qcom,spmi/spmi-0/spmi0-05/c440000.qcom,spmi:qcom,pm8150l@5:qcom,leds@d300/leds/led:torch_0";
 
 /**
  * Write value to path and close file.
  */
 template <typename T>
-static void set(const std::string& path, const T& value) {
+static bool set(const std::string& path, const T& value) {
     std::ofstream file(path);
     file << value;
+    file.flush();
+    return file.good();
 }
 
 /**
@@ -32,7 +33,7 @@ static void set(const std::string& path, const T& value) {
 template <typename T>
 static T get(const std::string& path, const T& def) {
     std::ifstream file(path);
-    T result;
+    T result{};
 
     file >> result;
     return file.fail() ? def : result;
@@ -47,32 +48,31 @@ bool supportsSetTorchModeExt() {
 }
 
 int32_t getTorchDefaultStrengthLevelExt() {
-    // Our default value is 75. This corresponds to 15%.
-    // As we have changed the maximum value, 59% now corresponds to 75.
+    // 59 is about 23% of the advertised 0-255 range.
     return 59;
 }
 
 int32_t getTorchMaxStrengthLevelExt() {
-    // 255 out of 500 is a sane brightness.
-    // Let's cap it to 255 as max, we can go much higher, but I don't want to test this.
+    // Cap the advertised strength below the hardware maximum.
     return 255;
 }
 
 int32_t getTorchStrengthLevelExt() {
-    // We write same value in the both LEDs,
-    // so get from one.
-    auto node = kTorchLedPaths[0] + "/" + TORCH_BRIGHTNESS;
-    return get(node, 0);
+    auto node = kTorchLedPath + "/" + TORCH_BRIGHTNESS;
+    return std::clamp(get(node, 0), 0, getTorchMaxStrengthLevelExt());
 }
 
 void setTorchStrengthLevelExt(int32_t torchStrength, bool enabled) {
-    set(TOGGLE_SWITCH, 0);
-    for (auto& path : kTorchLedPaths) {
-        auto node = path + "/" + TORCH_BRIGHTNESS;
-    set(node, torchStrength);
-    }
-    if (enabled)
+    const int32_t strength = std::clamp(torchStrength, 0, getTorchMaxStrengthLevelExt());
+    auto node = kTorchLedPath + "/" + TORCH_BRIGHTNESS;
+    const bool success = set(node, strength);
+
+    // Avoid switching off the torch during live strength changes.
+    if (success && enabled && strength > 0) {
         set(TOGGLE_SWITCH, 255);
+    } else {
+        set(TOGGLE_SWITCH, 0);
+    }
 }
 
 void setTorchModeExt(bool enabled) {
