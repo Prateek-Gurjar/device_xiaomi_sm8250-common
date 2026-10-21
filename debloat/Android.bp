@@ -1,0 +1,20 @@
+cc_prebuilt_binary {
+    name: "RemovePackagesSm8250Common",
+    srcs: ["RemovePackagesSm8250Common"],
+    check_elf_files: false,
+    strip: {
+        none: true,
+    },
+    overrides: [
+        "Camelot",
+        "Canvas",
+        "Jelly",
+        "Recorder",
+        "Twelve",
+        "Chocola",
+        "MatLog",
+        "ReFra",
+        "Vanilla",
+        "Via",
+    ],
+}
