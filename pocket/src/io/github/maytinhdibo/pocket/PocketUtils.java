@@ -31,20 +31,21 @@ import android.util.Log;
 public class PocketUtils {
     private static final String TAG = "PocketMode";
 
-    public static void startService(Context context) {
+    public static boolean startService(Context context) {
         try {
-            context.startService(new Intent(context, PocketService.class));
+            return context.startService(new Intent(context, PocketService.class)) != null;
         } catch (Exception e) {
-            Log.d(TAG, e.getStackTrace().toString());
+            Log.e(TAG, "Unable to start pocket mode service", e);
+            return false;
         }
-
     }
 
-    public static void stopService(Context context) {
+    public static boolean stopService(Context context) {
         try {
-            context.stopService(new Intent(context, PocketService.class));
+            return context.stopService(new Intent(context, PocketService.class));
         } catch (Exception e) {
-            Log.d(TAG, e.getStackTrace().toString());
+            Log.e(TAG, "Unable to stop pocket mode service", e);
+            return false;
         }
     }
 }

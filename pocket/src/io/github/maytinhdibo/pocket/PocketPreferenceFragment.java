@@ -25,15 +25,15 @@
 package io.github.maytinhdibo.pocket;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragment;
 import androidx.preference.SwitchPreference;
-import android.app.ActionBar;
-import android.app.Activity;
 
 public class PocketPreferenceFragment extends PreferenceFragment
         implements Preference.OnPreferenceChangeListener {
@@ -57,6 +57,16 @@ public class PocketPreferenceFragment extends PreferenceFragment
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         addPreferencesFromResource(R.layout.pocket_setting);
         modeSwitch = (SwitchPreference) findPreference(BATTERY_POCKET_MODE);
+        SensorManager sensorManager = (SensorManager) getActivity()
+                .getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager == null || sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY) == null) {
+            modeSwitch.setEnabled(false);
+            modeSwitch.setSummary(R.string.pocketmode_not_supported);
+            return;
+        }
+        SharedPreferences preferences = getActivity().getSharedPreferences(
+                BATTERY_POCKET_MODE, Context.MODE_PRIVATE);
+        modeSwitch.setChecked(preferences.getBoolean("enable", false));
         modeSwitch.setOnPreferenceChangeListener(this);
     }
 
@@ -66,13 +76,19 @@ public class PocketPreferenceFragment extends PreferenceFragment
         boolean value = (Boolean) newValue;
 
         if (preference.getKey().equals(BATTERY_POCKET_MODE)) {
-            SharedPreferences.Editor editor = getActivity().getSharedPreferences(BATTERY_POCKET_MODE, Activity.MODE_PRIVATE)
+            SharedPreferences.Editor editor = getActivity().getSharedPreferences(
+                    BATTERY_POCKET_MODE, Context.MODE_PRIVATE)
                     .edit();
-            editor.putBoolean("enable", value);
-            editor.commit();
+            if (!editor.putBoolean("enable", value).commit()) {
+                return false;
+            }
 
             if (value) {
-                PocketUtils.startService(getContext());
+                if (!PocketUtils.startService(getContext())) {
+                    getActivity().getSharedPreferences(BATTERY_POCKET_MODE, Context.MODE_PRIVATE)
+                            .edit().putBoolean("enable", false).apply();
+                    return false;
+                }
             } else {
                 PocketUtils.stopService(getContext());
             }

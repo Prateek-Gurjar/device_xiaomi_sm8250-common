@@ -23,6 +23,7 @@ import android.service.quicksettings.TileService;
 import android.view.Display;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -42,22 +43,29 @@ public class RefreshRateTileService extends TileService {
     public void onCreate() {
         super.onCreate();
         context = getApplicationContext();
-        Display.Mode mode = context.getDisplay().getMode();
-        Display.Mode[] modes = context.getDisplay().getSupportedModes();
+        Display display = context.getDisplay();
+        if (display == null) return;
+        Display.Mode mode = display.getMode();
+        Display.Mode[] modes = display.getSupportedModes();
         for (Display.Mode m : modes) {
             float rate = Float.valueOf(String.format(Locale.US, "%.02f", m.getRefreshRate()));
             if (m.getPhysicalWidth() == mode.getPhysicalWidth() &&
-                m.getPhysicalHeight() == mode.getPhysicalHeight()) {
+                m.getPhysicalHeight() == mode.getPhysicalHeight() &&
+                !availableRates.contains(rate)) {
                 availableRates.add(rate);
             }
         }
+        Collections.sort(availableRates);
         syncFromSettings();
     }
 
     private int getSettingOf(String key) {
         float rate = Settings.System.getFloat(context.getContentResolver(), key, 60);
-        return availableRates.indexOf(
+        int index = availableRates.indexOf(
                 Float.valueOf(String.format(Locale.US, "%.02f", rate)));
+        if (index >= 0) return index;
+        int defaultIndex = availableRates.indexOf(60.0f);
+        return defaultIndex >= 0 ? defaultIndex : 0;
     }
 
     private void syncFromSettings() {
@@ -79,12 +87,18 @@ public class RefreshRateTileService extends TileService {
     }
 
     private String getFormatRate(float rate) {
-        return String.format("%.02f Hz", rate)
+        return String.format(Locale.US, "%.02f Hz", rate)
                             .replaceAll("[\\.,]00", "");
     }
 
     private void updateTileView() {
         String displayText;
+        if (tile == null) return;
+        if (availableRates.isEmpty()) {
+            tile.setState(Tile.STATE_UNAVAILABLE);
+            tile.updateTile();
+            return;
+        }
         float min = availableRates.get(activeRateMin);
         float max = availableRates.get(activeRateMax);
 
@@ -100,6 +114,7 @@ public class RefreshRateTileService extends TileService {
     public void onStartListening() {
         super.onStartListening();
         tile = getQsTile();
+        if (tile == null) return;
         syncFromSettings();
         updateTileView();
     }
@@ -107,6 +122,7 @@ public class RefreshRateTileService extends TileService {
     @Override
     public void onClick() {
         super.onClick();
+        if (tile == null || availableRates.isEmpty()) return;
         cycleRefreshRate();
         syncFromSettings();
         updateTileView();

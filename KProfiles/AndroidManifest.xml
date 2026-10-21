@@ -44,10 +44,16 @@
 
             <meta-data
                 android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.battery" />
+                android:value="com.android.settings.category.ia.system" />
             <meta-data
                 android:name="com.android.settings.group_key"
-                android:value="percentage_category" />
+                android:value="extras" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_kprofiles" />
+            <meta-data
+                android:name="com.android.settings.icon_tintable"
+                android:value="true" />
             <meta-data
                 android:name="com.android.settings.summary"
                 android:resource="@string/kprofiles_summary" />

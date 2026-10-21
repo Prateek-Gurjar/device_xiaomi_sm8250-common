@@ -22,6 +22,7 @@ import android.service.quicksettings.TileService;
 import androidx.preference.PreferenceManager;
 
 import org.lineageos.settings.utils.FileUtils;
+import org.lineageos.settings.touchsampling.TouchSamplingUtils;
 
 public class TouchSamplingTileService extends TileService {
 
@@ -29,6 +30,7 @@ public class TouchSamplingTileService extends TileService {
 
     private void updateUI(boolean enabled) {
         final Tile tile = getQsTile();
+        if (tile == null) return;
         if (FileUtils.fileExists(TouchSamplingUtils.HTSR_FILE)) {
             tile.setState(enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
         } else {
@@ -40,8 +42,7 @@ public class TouchSamplingTileService extends TileService {
     @Override
     public void onStartListening() {
         super.onStartListening();
-        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-        updateUI(sharedPrefs.getBoolean(HTSR_ENABLE_KEY, false));
+        updateUI(FileUtils.getFileValueAsBoolean(TouchSamplingUtils.HTSR_FILE, false));
     }
 
     @Override
@@ -52,10 +53,20 @@ public class TouchSamplingTileService extends TileService {
     @Override
     public void onClick() {
         super.onClick();
+        if (!FileUtils.fileExists(TouchSamplingUtils.HTSR_FILE)) {
+            updateUI(false);
+            return;
+        }
+        final boolean enabled = !FileUtils.getFileValueAsBoolean(
+                TouchSamplingUtils.HTSR_FILE, false);
+        if (!FileUtils.writeLine(TouchSamplingUtils.HTSR_FILE, enabled ? "1" : "0")) {
+            updateUI(!enabled);
+            return;
+        }
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-        final boolean enabled = !(sharedPrefs.getBoolean(HTSR_ENABLE_KEY, false));
-        FileUtils.writeLine(TouchSamplingUtils.HTSR_FILE, enabled ? "1" : "0");
-        sharedPrefs.edit().putBoolean(HTSR_ENABLE_KEY, enabled).commit();
+        sharedPrefs.edit().putBoolean(HTSR_ENABLE_KEY, enabled).apply();
+        getSharedPreferences(TouchSamplingSettingsFragment.SHAREDHTSR, MODE_PRIVATE).edit()
+                .putInt(TouchSamplingSettingsFragment.SHAREDHTSR, enabled ? 1 : 0).apply();
         updateUI(enabled);
     }
 }

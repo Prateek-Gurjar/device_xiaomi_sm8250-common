@@ -24,6 +24,7 @@ import android.provider.Settings;
 import androidx.preference.Preference;
 import androidx.preference.Preference.OnPreferenceChangeListener;
 import androidx.preference.SwitchPreferenceCompat;
+import androidx.preference.PreferenceManager;
 
 import org.lineageos.settings.R;
 import org.lineageos.settings.touchsampling.TouchSamplingUtils;
@@ -47,7 +48,11 @@ public class TouchSamplingSettingsFragment extends SettingsBasePreferenceFragmen
         if (FileUtils.fileExists(TouchSamplingUtils.HTSR_FILE)) {
             mHTSRPreference.setEnabled(true);
             mHTSRPreference.setOnPreferenceChangeListener(this);
-            enableHTSR(0);
+            boolean enabled = FileUtils.getFileValueAsBoolean(
+                    TouchSamplingUtils.HTSR_FILE, false);
+            mHTSRPreference.setChecked(enabled);
+            PreferenceManager.getDefaultSharedPreferences(getActivity()).edit()
+                    .putBoolean(HTSR_ENABLE_KEY, enabled).apply();
         } else {
             mHTSRPreference.setSummary(R.string.htsr_enable_summary_not_supported);
             mHTSRPreference.setEnabled(false);
@@ -57,7 +62,7 @@ public class TouchSamplingSettingsFragment extends SettingsBasePreferenceFragmen
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         if (HTSR_ENABLE_KEY.equals(preference.getKey())) {
-            enableHTSR((Boolean) newValue ? 1 : 0);
+            if (!enableHTSR((Boolean) newValue ? 1 : 0)) return false;
         }
         return true;
     }
@@ -71,11 +76,16 @@ public class TouchSamplingSettingsFragment extends SettingsBasePreferenceFragmen
         return false;
     }
 
-    private void enableHTSR(Integer enable) {
-            FileUtils.writeLine(TouchSamplingUtils.HTSR_FILE, enable.toString());
+    private boolean enableHTSR(Integer enable) {
+            if (!FileUtils.writeLine(TouchSamplingUtils.HTSR_FILE, enable.toString())) {
+                return false;
+            }
             SharedPreferences preferences = getActivity().getSharedPreferences(SHAREDHTSR,Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = preferences.edit();
             editor.putInt(SHAREDHTSR, enable);
             editor.commit();
+            PreferenceManager.getDefaultSharedPreferences(getActivity()).edit()
+                    .putBoolean(HTSR_ENABLE_KEY, enable != 0).apply();
+            return true;
     }
 }

@@ -38,7 +38,8 @@ class SaturationTileService : TileService() {
 
     private fun updateTile() {
         qsTile?.apply {
-            state = Tile.STATE_ACTIVE
+            // This tile opens the saturation controls; it does not toggle saturation.
+            state = Tile.STATE_INACTIVE
             updateTile()
         }
     }

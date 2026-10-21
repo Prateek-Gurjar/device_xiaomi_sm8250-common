@@ -43,7 +43,7 @@ import io.github.maytinhdibo.pocket.receiver.PhoneStateReceiver;
 
 public class PocketService extends Service {
     private static final String TAG = "PocketMode";
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     private static final int EVENT_UNLOCK = 2;
     private static final int EVENT_TURN_ON_SCREEN = 1;
@@ -64,7 +64,8 @@ public class PocketService extends Service {
     public void onCreate() {
         if (DEBUG) Log.d(TAG, "Creating service");
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
+        proximitySensor = sensorManager == null ? null
+                : sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
 
         mContext = this;
 
@@ -94,7 +95,7 @@ public class PocketService extends Service {
     }
 
     private void disableSensor() {
-        if (!isSensorRunning) return;
+        if (!isSensorRunning || sensorManager == null || proximitySensor == null) return;
         if (DEBUG) Log.d(TAG, "Disable proximity sensor");
         sensorManager.unregisterListener(proximitySensorEventListener, proximitySensor);
         //mark first sensor update after disable
@@ -103,6 +104,7 @@ public class PocketService extends Service {
     }
 
     private void enableSensor() {
+        if (sensorManager == null || proximitySensor == null || isSensorRunning) return;
         if (DEBUG) Log.d(TAG, "Enable proximity sensor");
         sensorManager.registerListener(proximitySensorEventListener,
                 proximitySensor,
