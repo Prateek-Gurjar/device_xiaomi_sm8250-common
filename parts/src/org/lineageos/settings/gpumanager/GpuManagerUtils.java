@@ -17,10 +17,11 @@ import android.util.Log;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /** KGSL controls exposed by the Adreno 650 driver in the munch kernel. */
 public final class GpuManagerUtils {
@@ -38,7 +39,17 @@ public final class GpuManagerUtils {
     private GpuManagerUtils() {}
 
     public static boolean isAvailable() {
-        return new File(BASE + "/gpu_available_frequencies").canRead();
+        return !getFrequencies().isEmpty() && !getGovernors().isEmpty()
+                && new File(BASE + "/devfreq/min_freq").canRead()
+                && new File(BASE + "/devfreq/max_freq").canRead();
+    }
+
+    public static boolean isToggleAvailable(String node) {
+        for (String toggle : TOGGLES) if (toggle.equals(node)) {
+            return new File(BASE + "/" + node).canRead()
+                    && new File(BASE + "/" + node).canWrite();
+        }
+        return false;
     }
 
     public static String read(String node, String fallback) {
@@ -62,7 +73,16 @@ public final class GpuManagerUtils {
     public static List<String> getFrequencies() {
         String raw = read("gpu_available_frequencies", "").trim();
         if (raw.isEmpty()) return Collections.emptyList();
-        List<String> values = new ArrayList<>(Arrays.asList(raw.split("\\s+")));
+        Set<String> unique = new HashSet<>();
+        for (String token : raw.split("\\s+")) {
+            try {
+                long frequency = Long.parseLong(token);
+                if (frequency > 0) unique.add(Long.toString(frequency));
+            } catch (NumberFormatException e) {
+                Log.w(TAG, "Ignoring invalid GPU frequency: " + token);
+            }
+        }
+        List<String> values = new ArrayList<>(unique);
         // Do not rely on power-level array ordering: expose numeric min-to-max choices.
         Collections.sort(values, new Comparator<String>() {
             @Override
@@ -75,8 +95,12 @@ public final class GpuManagerUtils {
 
     public static List<String> getGovernors() {
         String raw = readDevfreq("available_governors", "").trim();
-        return raw.isEmpty() ? Collections.<String>emptyList()
-                : Arrays.asList(raw.split("\\s+"));
+        if (raw.isEmpty()) return Collections.emptyList();
+        List<String> governors = new ArrayList<>();
+        for (String governor : raw.split("\\s+")) {
+            if (!governor.isEmpty() && !governors.contains(governor)) governors.add(governor);
+        }
+        return governors;
     }
 
     public static boolean write(String node, String value) {
@@ -119,6 +143,7 @@ public final class GpuManagerUtils {
 
     public static boolean apply(Context context, String governor, String min, String max,
             boolean[] toggles) {
+        if (context == null || toggles == null || toggles.length != TOGGLES.length) return false;
         List<String> frequencies = getFrequencies();
         List<String> governors = getGovernors();
         if (!frequencies.contains(min) || !frequencies.contains(max)
@@ -146,7 +171,17 @@ public final class GpuManagerUtils {
             ok &= writeDevfreq("max_freq", max);
         }
         for (int i = 0; i < TOGGLES.length; i++) {
-            ok &= write(TOGGLES[i], toggles[i] ? "1" : "0");
+            if (isToggleAvailable(TOGGLES[i])) {
+                ok &= write(TOGGLES[i], toggles[i] ? "1" : "0");
+            }
+        }
+        ok &= governor.equals(readDevfreq("governor", ""));
+        ok &= min.equals(readDevfreq("min_freq", ""));
+        ok &= max.equals(readDevfreq("max_freq", ""));
+        for (int i = 0; i < TOGGLES.length; i++) {
+            if (isToggleAvailable(TOGGLES[i])) {
+                ok &= (toggles[i] ? "1" : "0").equals(read(TOGGLES[i], ""));
+            }
         }
         if (ok) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -165,13 +200,31 @@ public final class GpuManagerUtils {
         List<String> frequencies = getFrequencies();
         List<String> governors = getGovernors();
         if (frequencies.isEmpty() || governors.isEmpty()) return false;
-        String governor = prefs.getString(PREF_GOVERNOR,
-                governors.contains("msm-adreno-tz") ? "msm-adreno-tz" : governors.get(0));
-        String min = prefs.getString(PREF_MIN, frequencies.get(0));
-        String max = prefs.getString(PREF_MAX, frequencies.get(frequencies.size() - 1));
+        String governor = prefs.getString(PREF_GOVERNOR, "");
+        if (!governors.contains(governor)) {
+            governor = governors.contains("msm-adreno-tz") ? "msm-adreno-tz" : governors.get(0);
+            Log.w(TAG, "Saved governor unavailable; using " + governor);
+        }
+        String min = prefs.getString(PREF_MIN, "");
+        if (!frequencies.contains(min)) {
+            min = frequencies.get(0);
+            Log.w(TAG, "Saved minimum frequency unavailable; using kernel minimum");
+        }
+        String max = prefs.getString(PREF_MAX, "");
+        if (!frequencies.contains(max)) {
+            max = frequencies.get(frequencies.size() - 1);
+            Log.w(TAG, "Saved maximum frequency unavailable; using kernel maximum");
+        }
+        if (Long.parseLong(min) > Long.parseLong(max)) {
+            min = frequencies.get(0);
+            max = frequencies.get(frequencies.size() - 1);
+            Log.w(TAG, "Saved GPU range invalid; using kernel frequency range");
+        }
         boolean[] toggles = new boolean[TOGGLES.length];
         for (int i = 0; i < TOGGLES.length; i++) toggles[i] = prefs.getBoolean(TOGGLES[i], false);
-        return apply(context, governor, min, max, toggles);
+        boolean applied = apply(context, governor, min, max, toggles);
+        if (!applied) Log.e(TAG, "Unable to restore saved GPU settings at boot");
+        return applied;
     }
 
     public static void setApplyOnBoot(Context context, boolean enabled) {

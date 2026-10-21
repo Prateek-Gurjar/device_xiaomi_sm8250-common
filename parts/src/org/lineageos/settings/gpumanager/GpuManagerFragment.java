@@ -5,6 +5,8 @@
 package org.lineageos.settings.gpumanager;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
@@ -12,7 +14,10 @@ import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceScreen;
 import androidx.preference.SwitchPreferenceCompat;
 import com.android.settingslib.widget.SettingsBasePreferenceFragment;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.lineageos.settings.R;
 
 public class GpuManagerFragment extends SettingsBasePreferenceFragment {
@@ -20,6 +25,15 @@ public class GpuManagerFragment extends SettingsBasePreferenceFragment {
     private ListPreference mMin;
     private ListPreference mMax;
     private SwitchPreferenceCompat[] mToggles;
+    private final List<Preference> mInfoPreferences = new ArrayList<>();
+    private final Map<Preference, String> mInfoNodes = new HashMap<>();
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
+    private final Runnable mRefreshInfo = new Runnable() {
+        @Override public void run() {
+            refreshInfo();
+            if (isResumed()) mHandler.postDelayed(this, 2000);
+        }
+    };
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -34,15 +48,12 @@ public class GpuManagerFragment extends SettingsBasePreferenceFragment {
         }
 
         PreferenceCategory info = category(screen, R.string.gpu_manager_info);
-        addInfo(info, R.string.gpu_manager_model, GpuManagerUtils.read("gpu_model", "Unknown"));
-        addInfo(info, R.string.gpu_manager_frequency,
-                formatFrequency(GpuManagerUtils.read("gpuclk", "Unknown")));
-        addInfo(info, R.string.gpu_manager_load,
-                GpuManagerUtils.read("gpu_busy_percentage", "Unknown"));
-        addInfo(info, R.string.gpu_manager_temperature,
-                formatTemperature(GpuManagerUtils.read("temp", "")));
-        addInfo(info, R.string.gpu_manager_thermal_level,
-                GpuManagerUtils.read("thermal_pwrlevel", "Unknown"));
+        addInfo(info, R.string.gpu_manager_model, "gpu_model");
+        addInfo(info, R.string.gpu_manager_frequency, "gpuclk");
+        addInfo(info, R.string.gpu_manager_load, "gpu_busy_percentage");
+        addInfo(info, R.string.gpu_manager_temperature, "temp");
+        addInfo(info, R.string.gpu_manager_thermal_level, "thermal_pwrlevel");
+        refreshInfo();
 
         List<String> governors = GpuManagerUtils.getGovernors();
         PreferenceCategory tuning = category(screen, R.string.gpu_manager_settings);
@@ -71,6 +82,8 @@ public class GpuManagerFragment extends SettingsBasePreferenceFragment {
             mToggles[i].setTitle(titles[i]);
             mToggles[i].setPersistent(false);
             mToggles[i].setChecked("1".equals(GpuManagerUtils.read(keys[i], "0")));
+            mToggles[i].setEnabled(GpuManagerUtils.isToggleAvailable(keys[i]));
+            mToggles[i].setSummary(R.string.gpu_manager_toggle_warning);
             power.addPreference(mToggles[i]);
         }
 
@@ -90,6 +103,7 @@ public class GpuManagerFragment extends SettingsBasePreferenceFragment {
         actions.addPreference(applyOnBoot);
         Preference reset = new Preference(getContext());
         reset.setTitle(R.string.gpu_manager_reset);
+        reset.setSummary(R.string.gpu_manager_reset_summary);
         reset.setOnPreferenceClickListener(preference -> resetSettings());
         actions.addPreference(reset);
     }
@@ -101,12 +115,36 @@ public class GpuManagerFragment extends SettingsBasePreferenceFragment {
         return category;
     }
 
-    private void addInfo(PreferenceCategory category, int title, String value) {
+    private void addInfo(PreferenceCategory category, int title, String node) {
         Preference item = new Preference(getContext());
         item.setTitle(title);
-        item.setSummary(value);
         item.setSelectable(false);
+        mInfoNodes.put(item, node);
+        mInfoPreferences.add(item);
         category.addPreference(item);
+    }
+
+    @Override public void onResume() {
+        super.onResume();
+        mHandler.removeCallbacks(mRefreshInfo);
+        mHandler.post(mRefreshInfo);
+    }
+
+    @Override public void onPause() {
+        mHandler.removeCallbacks(mRefreshInfo);
+        super.onPause();
+    }
+
+    private void refreshInfo() {
+        for (Preference item : mInfoPreferences) {
+            String node = mInfoNodes.get(item);
+            String value = GpuManagerUtils.read(node, "Unknown");
+            if ("gpuclk".equals(node)) value = formatFrequency(value);
+            else if ("temp".equals(node)) value = formatTemperature(value);
+            else if ("gpu_busy_percentage".equals(node) && !"Unknown".equals(value)
+                    && !value.endsWith("%")) value += "%";
+            item.setSummary(value);
+        }
     }
 
     private ListPreference list(PreferenceCategory category, String key, int title,
@@ -149,7 +187,12 @@ public class GpuManagerFragment extends SettingsBasePreferenceFragment {
         List<String> governors = GpuManagerUtils.getGovernors();
         if (frequencies.isEmpty() || governors.isEmpty()) return true;
         String governor = governors.contains("msm-adreno-tz") ? "msm-adreno-tz" : governors.get(0);
-        boolean[] defaults = {false, false, false, true, true};
+        // Preserve live power overrides; the driver does not expose their reset defaults.
+        boolean[] defaults = new boolean[mToggles.length];
+        String[] nodes = {"force_clk_on", "force_bus_on", "force_rail_on", "force_no_nap", "bus_split"};
+        for (int i = 0; i < defaults.length; i++) {
+            defaults[i] = "1".equals(GpuManagerUtils.read(nodes[i], "0"));
+        }
         boolean ok = GpuManagerUtils.apply(getContext(), governor, frequencies.get(0),
                 frequencies.get(frequencies.size() - 1), defaults);
         if (ok) {
