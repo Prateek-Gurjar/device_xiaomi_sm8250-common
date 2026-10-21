@@ -108,17 +108,17 @@ public class TouchSettingsFragment extends SettingsBasePreferenceFragment
     }
 
     private void updateDefaults() {
-        String[] values = getTouchValues().split(",");
-        boolean modeEnabled = Integer.parseInt(values[Constants.TOUCH_GAME_MODE]) == 1;
+        int[] values = parseTouchValues(getTouchValues());
+        boolean modeEnabled = values[Constants.TOUCH_GAME_MODE] != 0;
         mGameMode.setChecked(modeEnabled);
 
         mTouchSensitivity.setEnabled(modeEnabled);
         mTouchResponse.setEnabled(modeEnabled);
         mTouchResistant.setEnabled(modeEnabled);
 
-        mTouchResponse.setProgress(Integer.parseInt(values[Constants.TOUCH_RESPONSE]));
-        mTouchSensitivity.setProgress(Integer.parseInt(values[Constants.TOUCH_SENSITIVITY]));
-        mTouchResistant.setProgress(Integer.parseInt(values[Constants.TOUCH_RESISTANT]));
+        mTouchResponse.setProgress(values[Constants.TOUCH_RESPONSE]);
+        mTouchSensitivity.setProgress(values[Constants.TOUCH_SENSITIVITY]);
+        mTouchResistant.setProgress(values[Constants.TOUCH_RESISTANT]);
     }
 
     private void writeTouchValues(String modes) {
@@ -130,8 +130,27 @@ public class TouchSettingsFragment extends SettingsBasePreferenceFragment
         if (values == null || values.isEmpty()) {
             values = "0,0,0,0";
         }
+        int[] parsed = parseTouchValues(values);
+        values = parsed[0] + "," + parsed[1] + "," + parsed[2] + "," + parsed[3];
         writeTouchValues(values);
         return values;
+    }
+
+    private int[] parseTouchValues(String values) {
+        int[] parsed = new int[] { 0, 0, 0, 0 };
+        String[] parts = values.split(",", -1);
+        if (parts.length != parsed.length) return parsed;
+        int[] maxValues = new int[] { 1, 3, 3, 3 };
+        try {
+            for (int i = 0; i < parsed.length; i++) {
+                parsed[i] = Integer.parseInt(parts[i]);
+                if (parsed[i] < 0) parsed[i] = 0;
+                if (parsed[i] > maxValues[i]) parsed[i] = maxValues[i];
+            }
+        } catch (NumberFormatException e) {
+            return new int[] { 0, 0, 0, 0 };
+        }
+        return parsed;
     }
 
     public void updateTouchModes(int value, int mode) {
@@ -140,5 +159,6 @@ public class TouchSettingsFragment extends SettingsBasePreferenceFragment
         String finalValues = values[Constants.TOUCH_GAME_MODE] + "," + values[Constants.TOUCH_RESPONSE] + ","
                 + values[Constants.TOUCH_SENSITIVITY] + "," + values[Constants.TOUCH_RESISTANT];
         writeTouchValues(finalValues);
+        ThermalUtils.refreshService(getActivity());
     }
 }

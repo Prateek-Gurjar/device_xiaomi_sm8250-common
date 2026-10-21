@@ -84,8 +84,7 @@
 
         <service
             android:name=".thermal.ThermalService"
-            android:exported="true"
-            android:permission="ThermalService" />
+            android:exported="false" />
 
         <service
             android:name=".display.DcDimmingTileService"

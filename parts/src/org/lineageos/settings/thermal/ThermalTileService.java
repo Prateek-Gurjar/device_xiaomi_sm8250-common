@@ -18,42 +18,15 @@
 
 package org.lineageos.settings.thermal;
 
-import android.annotation.TargetApi;
 import android.content.Intent;
 import android.service.quicksettings.TileService;
 
-@TargetApi(24)
 public class ThermalTileService extends TileService {
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-    }
-
-    @Override
-    public void onTileAdded() {
-        super.onTileAdded();
-    }
-
-    @Override
-    public void onTileRemoved() {
-        super.onTileRemoved();
-    }
-
-    @Override
-    public void onStartListening() {
-        super.onStartListening();
-    }
-
-    @Override
-    public void onStopListening() {
-        super.onStopListening();
-    }
-
     @Override
     public void onClick() {
         super.onClick();
-        Intent ThermalProfiles = new Intent(this, ThermalActivity.class);
-        ThermalProfiles.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivityAndCollapse(ThermalProfiles);
+        Intent thermalProfiles = new Intent(this, ThermalActivity.class);
+        thermalProfiles.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivityAndCollapse(thermalProfiles);
     }
 }

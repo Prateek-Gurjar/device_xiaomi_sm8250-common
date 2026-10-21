@@ -16,20 +16,18 @@
 
 package org.lineageos.settings.thermal;
 
-import android.app.ActivityManager;
 import android.app.ActivityTaskManager;
 import android.app.ActivityTaskManager.RootTaskInfo;
 import android.app.IActivityTaskManager;
-import android.app.TaskStackListener;
 import android.app.Service;
 import android.app.TaskStackListener;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.os.RemoteException;
 import android.util.Log;
 
@@ -56,23 +54,28 @@ public class ThermalService extends Service {
                     mScreenOn = true;
                     setThermalProfile();
                     break;
+                case ThermalUtils.ACTION_REFRESH_PROFILE:
+                    setThermalProfile();
+                    break;
             }
-            mThermalUtils.resetTouchModes();
         }
     };
 
     @Override
     public void onCreate() {
+        super.onCreate();
         if (DEBUG) Log.d(TAG, "Creating service");
+        mThermalUtils = new ThermalUtils(this);
+        PowerManager powerManager = getSystemService(PowerManager.class);
+        mScreenOn = powerManager != null && powerManager.isInteractive();
         try {
             mActivityTaskManager = ActivityTaskManager.getService();
             mActivityTaskManager.registerTaskStackListener(mTaskListener);
         } catch (RemoteException e) {
-            // Do nothing
+            Log.e(TAG, "Unable to register task stack listener", e);
         }
-        mThermalUtils = new ThermalUtils(this);
         registerReceiver();
-        super.onCreate();
+        updateForegroundApp();
     }
 
     @Override
@@ -92,10 +95,28 @@ public class ThermalService extends Service {
         mThermalUtils.updateTouchRotation();
     }
 
+    @Override
+    public void onDestroy() {
+        try {
+            if (mActivityTaskManager != null) {
+                mActivityTaskManager.unregisterTaskStackListener(mTaskListener);
+            }
+        } catch (RemoteException e) {
+            Log.w(TAG, "Unable to unregister task stack listener", e);
+        }
+        try {
+            unregisterReceiver(mIntentReceiver);
+        } catch (IllegalArgumentException e) {
+            Log.w(TAG, "Thermal receiver was not registered", e);
+        }
+        super.onDestroy();
+    }
+
     private void registerReceiver() {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
+        filter.addAction(ThermalUtils.ACTION_REFRESH_PROFILE);
         this.registerReceiver(mIntentReceiver, filter);
     }
 
@@ -104,24 +125,28 @@ public class ThermalService extends Service {
             mThermalUtils.setThermalProfile(mCurrentApp);
         } else {
             mThermalUtils.setDefaultThermalProfile();
+            mThermalUtils.resetTouchModes();
         }
     }
 
     private final TaskStackListener mTaskListener = new TaskStackListener() {
         @Override
         public void onTaskStackChanged() {
-            try {
-                final RootTaskInfo info = mActivityTaskManager.getFocusedRootTaskInfo();
-                if (info == null || info.topActivity == null) {
-                    return;
-                }
-
-                String foregroundApp = info.topActivity.getPackageName();
-                if (!foregroundApp.equals(mCurrentApp)) {
-                    mCurrentApp = foregroundApp;
-                    setThermalProfile();
-                }
-            } catch (Exception e) {}
+            updateForegroundApp();
         }
     };
+
+    private void updateForegroundApp() {
+        if (mActivityTaskManager == null) return;
+        try {
+            final RootTaskInfo info = mActivityTaskManager.getFocusedRootTaskInfo();
+            if (info == null || info.topActivity == null) return;
+
+            String foregroundApp = info.topActivity.getPackageName();
+            if (!foregroundApp.equals(mCurrentApp)) mCurrentApp = foregroundApp;
+            setThermalProfile();
+        } catch (RemoteException e) {
+            Log.e(TAG, "Unable to determine foreground app", e);
+        }
+    }
 }

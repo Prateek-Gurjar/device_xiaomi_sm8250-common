@@ -396,6 +396,7 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
             int currentState = mThermalUtils.getStateForPackage(entry.info.packageName);
             if (currentState != position) {
                 mThermalUtils.writePackage(entry.info.packageName, position);
+                ThermalUtils.refreshService(getActivity());
                 notifyDataSetChanged();
             }
         }
@@ -468,13 +469,9 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
 
         @Override
         public boolean filterApp(ApplicationsState.AppEntry entry) {
-            boolean show = !mAllPackagesAdapter.mEntries.contains(entry.info.packageName);
-            if (show) {
-                synchronized (mLauncherResolveInfoList) {
-                    show = mLauncherResolveInfoList.contains(entry.info.packageName);
-                }
+            synchronized (mLauncherResolveInfoList) {
+                return mLauncherResolveInfoList.contains(entry.info.packageName);
             }
-            return show;
         }
     }
 }
