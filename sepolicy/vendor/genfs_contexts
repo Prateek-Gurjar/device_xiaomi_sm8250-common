@@ -6,6 +6,8 @@ genfscon sysfs /kernel/boot_cdsp/boot                                           
 
 # Display
 genfscon sysfs /devices/platform/soc/ae00000.qcom,mdss_mdp/idle_state                               u:object_r:vendor_sysfs_graphics:s0
+genfscon sysfs /class/backlight/panel0-backlight/brightness                                           u:object_r:vendor_sysfs_graphics:s0
+genfscon sysfs /class/backlight/panel0-backlight/max_brightness                                       u:object_r:vendor_sysfs_graphics:s0
 
 # Display dim layer Exposure
 genfscon sysfs /devices/platform/soc/soc:qcom,dsi-display-primary/dimlayer_exposure                                                         u:object_r:vendor_sysfs_graphics:s0

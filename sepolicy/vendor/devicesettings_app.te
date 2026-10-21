@@ -19,3 +19,32 @@ allow devicesettings_app vendor_sysfs_graphics:file rw_file_perms;
 # Allow devicesettings_app to access battery sysfs for charge bypass
 allow devicesettings_app vendor_sysfs_battery_supply:dir search;
 allow devicesettings_app vendor_sysfs_battery_supply:file rw_file_perms;
+# CPU hotplug, cpufreq and KGSL controls used by XiaomiParts.
+allow devicesettings_app vendor_sysfs_corecontrol:dir search;
+allow devicesettings_app vendor_sysfs_corecontrol:file { getattr open read write };
+allow devicesettings_app sysfs_devices_system_cpu:dir { getattr open read search };
+allow devicesettings_app sysfs_devices_system_cpu:file { getattr open read write };
+allow devicesettings_app sysfs_kgsl:dir search;
+allow devicesettings_app sysfs_kgsl:file { getattr open read write };
+allow devicesettings_app sysfs_kgsl:lnk_file read;
+allow devicesettings_app vendor_sysfs_kgsl_gpuclk:dir search;
+allow devicesettings_app vendor_sysfs_kgsl_gpuclk:file { getattr open read write };
+
+# Read battery telemetry for bypass charging safety checks.
+allow devicesettings_app sysfs_battery_supply:dir search;
+allow devicesettings_app sysfs_battery_supply:file r_file_perms;
+
+# Miui Sepolicy for Vendor Audio Files
+allow devicesettings_app vendor_audio_data_file:dir {write add_name search};
+allow devicesettings_app vendor_audio_data_file:file {read write create getattr append open};
+
+# Allow KProfiles to be adjusted by a devicesettings_app
+allow devicesettings_app sysfs_kprofiles:file rw_file_perms;
+
+# DisplayFeature
+hal_client_domain(devicesettings_app, vendor_hal_displayfeature_xiaomi)
+binder_call(devicesettings_app, vendor_hal_displayfeature_xiaomi)
+
+allow devicesettings_app {
+  vendor_hal_displayfeature_xiaomi_hwservice
+}:hwservice_manager find;
