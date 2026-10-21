@@ -28,6 +28,7 @@ import org.lineageos.settings.thermal.ThermalUtils;
 import org.lineageos.settings.refreshrate.RefreshUtils;
 import org.lineageos.settings.touchsampling.TouchSamplingUtils;
 import org.lineageos.settings.kernelmanager.KernelManagerUtils;
+import org.lineageos.settings.gpumanager.GpuManagerUtils;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
 
@@ -47,5 +48,6 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         RefreshUtils.startService(context);
         TouchSamplingUtils.restoreSamplingValue(context);
         KernelManagerUtils.applySavedSettings(context);
+        GpuManagerUtils.applySavedSettings(context);
     }
 }
