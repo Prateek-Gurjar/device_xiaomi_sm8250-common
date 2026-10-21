@@ -398,6 +398,7 @@
          DOZE_AOD_PAUSED to DOZE_AOD state. -->
     <bool name="config_displayTurnsOnWhenResumingAod">true</bool>
 
+    <!-- Keep this sensor mapping synchronized with SystemUIOverlayCommon. -->
     <!-- Type of a sensor that provides a low-power estimate of the desired display
          brightness, suitable to listen to while the device is asleep (e.g. during
          always-on display) -->

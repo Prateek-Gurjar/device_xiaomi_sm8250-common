@@ -430,11 +430,10 @@
             <meta-data android:name="com.android.settings.icon" android:resource="@drawable/ic_clear_speaker" />
         </activity>
 
-        <!-- Pocketservice service -->
         <service
             android:name=".doze.PocketService"
-            android:permission="PocketService">
-        </service>
+            android:directBootAware="true"
+            android:exported="false" />
 
         <service
             android:name=".display.ColorService"

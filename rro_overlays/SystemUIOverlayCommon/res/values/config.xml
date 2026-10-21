@@ -23,7 +23,7 @@
     <!-- Doze: does this device support STATE_DOZE?  -->
     <bool name="doze_display_state_supported">true</bool>
 
-   <!-- Whether usage of the proximity sensor during doze is supported -->
+    <!-- Ultrasound proximity is not suitable for SystemUI Doze proximity checks. -->
     <bool name="doze_proximity_sensor_supported">false</bool>
 
     <!-- Should we vibrate on an icon animation of the shelf. This should only be active if the
@@ -46,6 +46,7 @@
     <bool name="doze_proximity_check_before_pulse">false</bool>
 
 
+    <!-- Keep this sensor mapping synchronized with FrameworkResOverlayCommon. -->
     <!-- Type of a sensor that provides a low-power estimate of the desired display
          brightness, suitable to listen to while the device is asleep (e.g. during
          always-on display) -->
