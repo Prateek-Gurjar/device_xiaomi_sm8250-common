@@ -45,13 +45,17 @@
     <string name="thermal_summary">Adjust per-app thermal profiles for optimum performance</string>
     <string name="thermal_default">Default</string>
     <string name="thermal_benchmark">Benchmark</string>
-    <string name="thermal_browser">Browser</string>
+    <string name="thermal_browser">Class 0</string>
     <string name="thermal_camera">Camera</string>
-    <string name="thermal_dialer">Dialer</string>
-    <string name="thermal_gaming">Gaming</string>
+    <string name="thermal_dialer">Phone Call</string>
+    <string name="thermal_gaming">Gaming (Medium)</string>
     <string name="thermal_navigation">Navigation</string>
     <string name="thermal_streaming">Streaming</string>
-    <string name="thermal_video">Video</string>
+    <string name="thermal_video">Video Chat</string>
+    <string name="thermal_gaming_heavy">Gaming (Heavy)</string>
+    <string name="thermal_gaming_light">Gaming (Light)</string>
+    <string name="thermal_camera_4k">Camera (4K)</string>
+    <string name="thermal_yuanshen">Genshin Impact (Heavy Gaming)</string>
 
     <!-- Refresh Rate Settings -->
     <string name="refresh_rate_tile_title">Refresh Rate</string>

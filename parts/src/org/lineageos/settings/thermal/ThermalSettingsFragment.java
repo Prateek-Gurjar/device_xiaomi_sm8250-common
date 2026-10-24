@@ -214,13 +214,18 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
             case ThermalUtils.STATE_BENCHMARK:
                 return R.drawable.ic_thermal_benchmark;
             case ThermalUtils.STATE_BROWSER:
-                return R.drawable.ic_thermal_browser;
+                return R.drawable.ic_thermal_default;
             case ThermalUtils.STATE_CAMERA:
                 return R.drawable.ic_thermal_camera;
             case ThermalUtils.STATE_DIALER:
                 return R.drawable.ic_thermal_dialer;
-            case ThermalUtils.STATE_GAMING:
+            case ThermalUtils.STATE_GAMING_MEDIUM:
+            case ThermalUtils.STATE_GAMING_HEAVY:
+            case ThermalUtils.STATE_GAMING_LIGHT:
+            case ThermalUtils.STATE_YUANSHEN:
                 return R.drawable.ic_thermal_gaming;
+            case ThermalUtils.STATE_CAMERA_4K:
+                return R.drawable.ic_thermal_camera;
             case ThermalUtils.STATE_NAVIGATION:
                 return R.drawable.ic_thermal_navigation;
             case ThermalUtils.STATE_STREAMING:
@@ -266,7 +271,11 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
                 R.string.thermal_gaming,
                 R.string.thermal_navigation,
                 R.string.thermal_streaming,
-                R.string.thermal_video
+                R.string.thermal_video,
+                R.string.thermal_gaming_heavy,
+                R.string.thermal_gaming_light,
+                R.string.thermal_camera_4k,
+                R.string.thermal_yuanshen
         };
 
         private ModeAdapter(Context context) {
@@ -369,8 +378,8 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
             holder.mode.setTag(entry);
             int stateIconDawable = getStateDrawable(mThermalUtils.getStateForPackage(
                     entry.info.packageName));
-            if (stateIconDawable == R.drawable.ic_thermal_gaming ||
-                    stateIconDawable == R.drawable.ic_thermal_benchmark) {
+            if (ThermalUtils.isGameProfile(packageState) ||
+                    packageState == ThermalUtils.STATE_BENCHMARK) {
                 holder.touchIcon.setVisibility(View.VISIBLE);
             } else {
                 holder.touchIcon.setVisibility(View.GONE);

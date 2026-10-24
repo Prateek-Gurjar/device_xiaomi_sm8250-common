@@ -43,32 +43,32 @@ public final class ThermalUtils {
     protected static final int STATE_BROWSER = 2;
     protected static final int STATE_CAMERA = 3;
     protected static final int STATE_DIALER = 4;
-    protected static final int STATE_GAMING = 5;
+    protected static final int STATE_GAMING_MEDIUM = 5;
     protected static final int STATE_STREAMING = 6;
     protected static final int STATE_NAVIGATION = 7;
     protected static final int STATE_VIDEO = 8;
+    protected static final int STATE_GAMING_HEAVY = 9;
+    protected static final int STATE_GAMING_LIGHT = 10;
+    protected static final int STATE_CAMERA_4K = 11;
+    protected static final int STATE_YUANSHEN = 12;
+    private static final int STATE_COUNT = STATE_YUANSHEN + 1;
     private static final String THERMAL_CONTROL = "thermal_control";
     public static final String ACTION_REFRESH_PROFILE =
             "org.lineageos.settings.action.REFRESH_THERMAL_PROFILE";
 
-    private static final String THERMAL_STATE_DEFAULT = "0";
-    private static final String THERMAL_STATE_BENCHMARK = "10";
-    private static final String THERMAL_STATE_BROWSER = "11";
-    private static final String THERMAL_STATE_CAMERA = "12";
-    private static final String THERMAL_STATE_DIALER = "8";
-    private static final String THERMAL_STATE_GAMING = "9";
-    private static final String THERMAL_STATE_NAVIGATION = "19";
-    private static final String THERMAL_STATE_STREAMING = "14";
-    private static final String THERMAL_STATE_VIDEO = "21";
+    // IDs verified against munch's encrypted thermal-map.conf. Munch has no
+    // dedicated Genshin profile, so Genshin uses the supported heavy-game map.
+    private static final String[] THERMAL_STATES = {
+            "0", "10", "11", "12", "8", "9", "19", "21", "4", "20", "3", "17", "20"
+    };
 
-    private static final String THERMAL_BENCHMARK = "thermal.benchmark=";
-    private static final String THERMAL_BROWSER = "thermal.browser=";
-    private static final String THERMAL_CAMERA = "thermal.camera=";
-    private static final String THERMAL_DIALER = "thermal.dialer=";
-    private static final String THERMAL_GAMING = "thermal.gaming=";
-    private static final String THERMAL_NAVIGATION = "thermal.navigation=";
-    private static final String THERMAL_STREAMING = "thermal.streaming=";
-    private static final String THERMAL_VIDEO = "thermal.video=";
+    // Preference slots follow spinner state order, excluding Default.
+    private static final String[] THERMAL_PREFIXES = {
+            "thermal.benchmark=", "thermal.browser=", "thermal.camera=", "thermal.dialer=",
+            "thermal.gaming=", "thermal.navigation=", "thermal.streaming=", "thermal.video=",
+            "thermal.gaming_heavy=", "thermal.gaming_light=", "thermal.camera_4k=",
+            "thermal.yuanshen="
+    };
 
     private static final String THERMAL_SCONFIG = "/sys/class/thermal/thermal_message/sconfig";
 
@@ -110,44 +110,69 @@ public final class ThermalUtils {
 
         if (value != null) {
             String[] modes = value.split(":", -1);
-            // Older builds stored benchmark, browser, camera, dialer, gaming,
-            // streaming. Keep those assignments when adding navigation and video.
-            if (modes.length == 6 && hasLegacyPrefixes(modes)) {
-                value = modes[0] + ":" + modes[1] + ":" + modes[2] + ":" + modes[3]
-                        + ":" + modes[4] + ":" + THERMAL_NAVIGATION + ":" + modes[5]
-                        + ":" + THERMAL_VIDEO;
+            if (modes.length == THERMAL_PREFIXES.length
+                    && hasExpectedPrefixes(modes, THERMAL_PREFIXES.length)) {
+                return value;
+            } else if (modes.length == 8 && hasCurrentPrefixes(modes)) {
+                value = appendEmptyProfiles(modes);
                 writeValue(value);
-            } else if (modes.length != 8 || !hasExpectedPrefixes(modes, 8)) {
+            } else if (modes.length == 6 && hasLegacyPrefixes(modes)) {
+                String[] migrated = { modes[0], modes[1], modes[2], modes[3], modes[4],
+                        THERMAL_PREFIXES[5], modes[5], THERMAL_PREFIXES[7] };
+                value = appendEmptyProfiles(migrated);
+                writeValue(value);
+            } else {
                 value = null;
             }
         }
 
         if (value == null || value.isEmpty()) {
-            value = THERMAL_BENCHMARK + ":" + THERMAL_BROWSER + ":" + THERMAL_CAMERA + ":" + THERMAL_DIALER + ":" +
-                    THERMAL_GAMING + ":" + THERMAL_NAVIGATION + ":" + THERMAL_STREAMING + ":" + THERMAL_VIDEO;
+            value = joinPrefixes();
             writeValue(value);
         }
         return value;
     }
 
     private boolean hasExpectedPrefixes(String[] modes, int count) {
-        String[] prefixes = { THERMAL_BENCHMARK, THERMAL_BROWSER, THERMAL_CAMERA,
-                THERMAL_DIALER, THERMAL_GAMING, THERMAL_NAVIGATION,
-                THERMAL_STREAMING, THERMAL_VIDEO };
         if (modes.length != count) return false;
         for (int i = 0; i < count; i++) {
-            if (!modes[i].startsWith(prefixes[i])) return false;
+            if (!modes[i].startsWith(THERMAL_PREFIXES[i])) return false;
+        }
+        return true;
+    }
+
+    private boolean hasCurrentPrefixes(String[] modes) {
+        for (int i = 0; i < modes.length; i++) {
+            if (!modes[i].startsWith(THERMAL_PREFIXES[i])) return false;
         }
         return true;
     }
 
     private boolean hasLegacyPrefixes(String[] modes) {
-        return modes.length == 6 && modes[0].startsWith(THERMAL_BENCHMARK)
-                && modes[1].startsWith(THERMAL_BROWSER)
-                && modes[2].startsWith(THERMAL_CAMERA)
-                && modes[3].startsWith(THERMAL_DIALER)
-                && modes[4].startsWith(THERMAL_GAMING)
-                && modes[5].startsWith(THERMAL_STREAMING);
+        return modes.length == 6 && modes[0].startsWith(THERMAL_PREFIXES[0])
+                && modes[1].startsWith(THERMAL_PREFIXES[1])
+                && modes[2].startsWith(THERMAL_PREFIXES[2])
+                && modes[3].startsWith(THERMAL_PREFIXES[3])
+                && modes[4].startsWith(THERMAL_PREFIXES[4])
+                && modes[5].startsWith("thermal.streaming=");
+    }
+
+    private String appendEmptyProfiles(String[] existingModes) {
+        StringBuilder value = new StringBuilder();
+        for (int i = 0; i < THERMAL_PREFIXES.length; i++) {
+            if (i > 0) value.append(':');
+            value.append(i < existingModes.length ? existingModes[i] : THERMAL_PREFIXES[i]);
+        }
+        return value.toString();
+    }
+
+    private String joinPrefixes() {
+        StringBuilder value = new StringBuilder();
+        for (int i = 0; i < THERMAL_PREFIXES.length; i++) {
+            if (i > 0) value.append(':');
+            value.append(THERMAL_PREFIXES[i]);
+        }
+        return value.toString();
     }
 
     public static void refreshService(Context context) {
@@ -159,102 +184,40 @@ public final class ThermalUtils {
         String value = getValue();
         value = value.replace(packageName + ",", "");
         String[] modes = value.split(":", -1);
-        String finalString;
-
-        switch (mode) {
-            case STATE_BENCHMARK:
-                modes[0] = modes[0] + packageName + ",";
-                break;
-            case STATE_BROWSER:
-                modes[1] = modes[1] + packageName + ",";
-                break;
-            case STATE_CAMERA:
-                modes[2] = modes[2] + packageName + ",";
-                break;
-            case STATE_DIALER:
-                modes[3] = modes[3] + packageName + ",";
-                break;
-            case STATE_GAMING:
-                modes[4] = modes[4] + packageName + ",";
-                break;
-            case STATE_NAVIGATION:
-                modes[5] = modes[5] + packageName + ",";
-                break;
-            case STATE_STREAMING:
-                modes[6] = modes[6] + packageName + ",";
-                break;
-            case STATE_VIDEO:
-                modes[7] = modes[7] + packageName + ",";
-                break;
+        if (mode > STATE_DEFAULT && mode < STATE_COUNT) {
+            modes[mode - 1] = modes[mode - 1] + packageName + ",";
         }
-
-        finalString = modes[0] + ":" + modes[1] + ":" + modes[2] + ":" + modes[3] + ":" +
-                modes[4] + ":" + modes[5] + ":" + modes[6] + ":" + modes[7];
-
-        writeValue(finalString);
+        writeValue(android.text.TextUtils.join(":", modes));
     }
 
     protected int getStateForPackage(String packageName) {
-        String value = getValue();
-        String[] modes = value.split(":", -1);
-        int state = STATE_DEFAULT;
-        if (modes[0].contains(packageName + ",")) {
-            state = STATE_BENCHMARK;
-        } else if (modes[1].contains(packageName + ",")) {
-            state = STATE_BROWSER;
-        } else if (modes[2].contains(packageName + ",")) {
-            state = STATE_CAMERA;
-        } else if (modes[3].contains(packageName + ",")) {
-            state = STATE_DIALER;
-        } else if (modes[4].contains(packageName + ",")) {
-            state = STATE_GAMING;
-        } else if (modes[5].contains(packageName + ",")) {
-            state = STATE_NAVIGATION;
-        } else if (modes[6].contains(packageName + ",")) {
-            state = STATE_STREAMING;
-        } else if (modes[7].contains(packageName + ",")) {
-            state = STATE_VIDEO;
+        String[] modes = getValue().split(":", -1);
+        for (int i = 0; i < modes.length; i++) {
+            if (modes[i].contains(packageName + ",")) {
+                return i + 1;
+            }
         }
-
-        return state;
+        return STATE_DEFAULT;
     }
 
     protected void setDefaultThermalProfile() {
-        writeThermalState(THERMAL_STATE_DEFAULT);
+        writeThermalState(THERMAL_STATES[STATE_DEFAULT]);
     }
 
     protected void setThermalProfile(String packageName) {
-        String value = getValue();
-        String state = THERMAL_STATE_DEFAULT;
+        int selectedState = getStateForPackage(packageName);
+        writeThermalState(THERMAL_STATES[selectedState]);
 
-        if (value != null) {
-            String[] modes = value.split(":", -1);
-
-            if (modes[0].contains(packageName + ",")) {
-                state = THERMAL_STATE_BENCHMARK;
-            } else if (modes[1].contains(packageName + ",")) {
-                state = THERMAL_STATE_BROWSER;
-            } else if (modes[2].contains(packageName + ",")) {
-                state = THERMAL_STATE_CAMERA;
-            } else if (modes[3].contains(packageName + ",")) {
-                state = THERMAL_STATE_DIALER;
-            } else if (modes[4].contains(packageName + ",")) {
-                state = THERMAL_STATE_GAMING;
-            } else if (modes[5].contains(packageName + ",")) {
-                state = THERMAL_STATE_NAVIGATION;
-            } else if (modes[6].contains(packageName + ",")) {
-                state = THERMAL_STATE_STREAMING;
-            } else if (modes[7].contains(packageName + ",")) {
-                state = THERMAL_STATE_VIDEO;
-            }
-        }
-        writeThermalState(state);
-
-        if (THERMAL_STATE_BENCHMARK.equals(state) || THERMAL_STATE_GAMING.equals(state)) {
+        if (selectedState == STATE_BENCHMARK || isGameProfile(selectedState)) {
             updateTouchModes(packageName);
         } else if (mTouchModeChanged) {
             resetTouchModes();
         }
+    }
+
+    protected static boolean isGameProfile(int state) {
+        return state == STATE_GAMING_MEDIUM || state == STATE_GAMING_HEAVY
+                || state == STATE_GAMING_LIGHT || state == STATE_YUANSHEN;
     }
 
     private void writeThermalState(String state) {
