@@ -44,8 +44,8 @@ public final class ThermalUtils {
     protected static final int STATE_CAMERA = 3;
     protected static final int STATE_DIALER = 4;
     protected static final int STATE_GAMING_MEDIUM = 5;
-    protected static final int STATE_STREAMING = 6;
-    protected static final int STATE_NAVIGATION = 7;
+    protected static final int STATE_NAVIGATION = 6;
+    protected static final int STATE_STREAMING = 7;
     protected static final int STATE_VIDEO = 8;
     protected static final int STATE_GAMING_HEAVY = 9;
     protected static final int STATE_GAMING_LIGHT = 10;
@@ -114,7 +114,7 @@ public final class ThermalUtils {
                     && hasExpectedPrefixes(modes, THERMAL_PREFIXES.length)) {
                 return value;
             } else if (modes.length == 8 && hasCurrentPrefixes(modes)) {
-                value = appendEmptyProfiles(modes);
+                value = migrateCurrentProfiles(modes);
                 writeValue(value);
             } else if (modes.length == 6 && hasLegacyPrefixes(modes)) {
                 String[] migrated = { modes[0], modes[1], modes[2], modes[3], modes[4],
@@ -164,6 +164,15 @@ public final class ThermalUtils {
             value.append(i < existingModes.length ? existingModes[i] : THERMAL_PREFIXES[i]);
         }
         return value.toString();
+    }
+
+    private String migrateCurrentProfiles(String[] existingModes) {
+        // The old Video profile used Munch's playback profile (sconfig 21).
+        // Keep those app assignments on Streaming; Video now means video chat.
+        String[] migrated = existingModes.clone();
+        migrated[6] = migrated[6] + migrated[7].substring(THERMAL_PREFIXES[7].length());
+        migrated[7] = THERMAL_PREFIXES[7];
+        return appendEmptyProfiles(migrated);
     }
 
     private String joinPrefixes() {

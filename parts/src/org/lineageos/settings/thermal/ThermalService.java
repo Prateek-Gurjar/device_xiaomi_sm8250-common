@@ -54,10 +54,14 @@ public class ThermalService extends Service {
                     mScreenOn = true;
                     setThermalProfile();
                     break;
-                case ThermalUtils.ACTION_REFRESH_PROFILE:
-                    setThermalProfile();
-                    break;
             }
+        }
+    };
+
+    private BroadcastReceiver mRefreshReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            setThermalProfile();
         }
     };
 
@@ -106,6 +110,7 @@ public class ThermalService extends Service {
         }
         try {
             unregisterReceiver(mIntentReceiver);
+            unregisterReceiver(mRefreshReceiver);
         } catch (IllegalArgumentException e) {
             Log.w(TAG, "Thermal receiver was not registered", e);
         }
@@ -113,11 +118,13 @@ public class ThermalService extends Service {
     }
 
     private void registerReceiver() {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        filter.addAction(Intent.ACTION_SCREEN_ON);
-        filter.addAction(ThermalUtils.ACTION_REFRESH_PROFILE);
-        this.registerReceiver(mIntentReceiver, filter);
+        IntentFilter screenFilter = new IntentFilter();
+        screenFilter.addAction(Intent.ACTION_SCREEN_OFF);
+        screenFilter.addAction(Intent.ACTION_SCREEN_ON);
+        registerReceiver(mIntentReceiver, screenFilter, Context.RECEIVER_EXPORTED);
+
+        IntentFilter refreshFilter = new IntentFilter(ThermalUtils.ACTION_REFRESH_PROFILE);
+        registerReceiver(mRefreshReceiver, refreshFilter, Context.RECEIVER_NOT_EXPORTED);
     }
 
     private void setThermalProfile() {
@@ -140,7 +147,11 @@ public class ThermalService extends Service {
         if (mActivityTaskManager == null) return;
         try {
             final RootTaskInfo info = mActivityTaskManager.getFocusedRootTaskInfo();
-            if (info == null || info.topActivity == null) return;
+            if (info == null || info.topActivity == null) {
+                mCurrentApp = "";
+                setThermalProfile();
+                return;
+            }
 
             String foregroundApp = info.topActivity.getPackageName();
             if (!foregroundApp.equals(mCurrentApp)) mCurrentApp = foregroundApp;

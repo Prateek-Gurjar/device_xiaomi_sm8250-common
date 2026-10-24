@@ -24,8 +24,6 @@ import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
 public class ThermalActivity extends CollapsingToolbarBaseActivity {
 
     private static final String TAG_THERMAL = "thermal";
-    private static final String THERMAL_SCONFIG = "/sys/class/thermal/thermal_message/sconfig";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
