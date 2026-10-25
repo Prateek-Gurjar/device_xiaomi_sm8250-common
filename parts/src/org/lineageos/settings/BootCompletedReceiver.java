@@ -41,6 +41,7 @@ import org.lineageos.settings.gpumanager.GpuManagerUtils;
 import org.lineageos.settings.utils.FileUtils;
 import org.lineageos.settings.display.ColorService;
 import org.lineageos.settings.saturation.PerAppSaturationService;
+import org.lineageos.settings.batterystats.BatteryStatsMonitorService;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
 
@@ -66,6 +67,15 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         TouchSamplingUtils.restoreSamplingValue(context);
         GpuManagerUtils.applySavedSettings(context);
         PocketService.startService(context);
+        if (sharedPrefs.getBoolean(BatteryStatsMonitorService.PREF_AUTO_RESET, true)
+                && sharedPrefs.getBoolean(
+                BatteryStatsMonitorService.PREF_RESET_ON_REBOOT, true)) {
+            BatteryStatsMonitorService.resetStoredSamples(context);
+        }
+        if (sharedPrefs.getBoolean(
+                BatteryStatsMonitorService.PREF_NOTIFICATION_ENABLED, false)) {
+            BatteryStatsMonitorService.start(context);
+        }
         FileUtils.enableService(context);
         overrideHdrTypes(context);
 

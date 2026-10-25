@@ -39,6 +39,9 @@
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
         android:icon="@mipmap/ic_launcher"
@@ -63,6 +66,15 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".batterystats.BatteryStatsResetReceiver"
+            android:directBootAware="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
             </intent-filter>
         </receiver>
 
@@ -396,6 +408,33 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
+        </service>
+
+        <activity
+            android:name=".batterystats.BatteryStatsActivity"
+            android:label="@string/battery_stats_title"
+            android:exported="true"
+            android:theme="@style/Theme.SubSettingsBase">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <meta-data android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.system" />
+            <meta-data android:name="com.android.settings.group_key" android:value="extras" />
+            <meta-data android:name="com.android.settings.icon_tintable" android:value="true" />
+            <meta-data android:name="com.android.settings.summary"
+                android:resource="@string/battery_stats_summary" />
+            <meta-data android:name="com.android.settings.icon"
+                android:resource="@drawable/charger_24px" />
+        </activity>
+
+        <service
+            android:name=".batterystats.BatteryStatsMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-enabled ongoing battery readings notification" />
         </service>
 
         <!-- Display Saturation tile service -->

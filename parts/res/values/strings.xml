@@ -263,4 +263,35 @@
     <string name="charge_bypass_unavailable">Bypass charging is not supported on this device</string>
     <string name="charge_bypass_safety_failed">Cannot enable bypass charging: %s</string>
     <string name="charge_bypass_write_failed">Could not change bypass charging. Check kernel support and device policy.</string>
+
+    <!-- Battery stats -->
+    <string name="battery_stats_title">Battery stats</string>
+    <string name="battery_stats_summary">Choose which battery readings appear in an ongoing notification</string>
+    <string name="battery_stats_notification_title">Show battery stats notification</string>
+    <string name="battery_stats_notification_summary">Keep selected readings updated in a persistent notification</string>
+    <string name="battery_stats_updating">Updating battery readings…</string>
+    <string name="battery_stats_metrics">Notification readings</string>
+    <string name="battery_stats_reset_category">Reset tracked drain data</string>
+    <string name="battery_stats_auto_reset">Automatically reset data</string>
+    <string name="battery_stats_auto_reset_summary">Turn off to keep drain data across charger connections and reboots</string>
+    <string name="battery_stats_reset_on_charger">When a charger is connected</string>
+    <string name="battery_stats_reset_on_charger_summary">Start a fresh drain sample when external power is connected</string>
+    <string name="battery_stats_reset_on_reboot">When the device reboots</string>
+    <string name="battery_stats_reset_on_reboot_summary">Clear active and idle drain samples during boot</string>
+    <string name="battery_stats_active_drain">Active drain</string>
+    <string name="battery_stats_active_drain_summary">Estimated drain rate while the screen is on</string>
+    <string name="battery_stats_idle_drain">Idle drain</string>
+    <string name="battery_stats_idle_drain_summary">Estimated drain rate while the screen is off</string>
+    <string name="battery_stats_charging_label">Charging state</string>
+    <string name="battery_stats_charging">Charging</string>
+    <string name="battery_stats_discharging">Not charging</string>
+    <string name="battery_stats_charge_time">Time to full</string>
+    <string name="battery_stats_remaining_time">Time remaining</string>
+    <string name="battery_stats_temperature_label">Battery temperature</string>
+    <string name="battery_stats_temperature">Temp %1$.1f°C</string>
+    <string name="battery_stats_drain">%1$.1f%%/h</string>
+    <string name="battery_stats_time">%1$s</string>
+    <string name="battery_stats_remaining">%1$s</string>
+    <string name="battery_stats_unavailable">N/A</string>
+    <string name="battery_stats_no_metrics">Enable readings in Settings</string>
 </resources>
