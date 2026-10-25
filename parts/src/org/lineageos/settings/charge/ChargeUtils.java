@@ -124,7 +124,6 @@ public class ChargeUtils {
         int plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0);
         int supportedSources = BatteryManager.BATTERY_PLUGGED_AC
                 | BatteryManager.BATTERY_PLUGGED_USB
-                | BatteryManager.BATTERY_PLUGGED_USB_C
                 | BatteryManager.BATTERY_PLUGGED_WIRELESS;
         return (plugged & supportedSources) != 0;
     }
