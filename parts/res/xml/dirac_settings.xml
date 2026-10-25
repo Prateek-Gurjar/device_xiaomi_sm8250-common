@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <SwitchPreferenceCompat
+        android:key="dirac_enable"
+        android:title="@string/dirac_title"
+        android:summary="@string/dirac_summary"
+        android:defaultValue="true" />
+    <SwitchPreferenceCompat
+        android:key="dirac_pause_during_calls"
+        android:title="@string/dirac_pause_calls_title"
+        android:summary="@string/dirac_pause_calls_summary"
+        android:defaultValue="true" />
+    <ListPreference
+        android:key="dirac_headset_pref"
+        android:title="@string/dirac_headset_title"
+        android:entries="@array/dirac_headset_pref_entries"
+        android:entryValues="@array/dirac_headset_pref_values"
+        android:defaultValue="0" />
+    <SwitchPreferenceCompat
+        android:key="dirac_eq_enabled"
+        android:title="@string/dirac_eq_enabled_title"
+        android:summary="@string/dirac_eq_enabled_summary"
+        android:defaultValue="true" />
+    <ListPreference
+        android:key="dirac_preset_pref"
+        android:title="@string/dirac_preset_title"
+        android:entries="@array/dirac_preset_pref_entries"
+        android:entryValues="@array/dirac_preset_pref_values"
+        android:defaultValue="0,0,0,0,0,0,0" />
+    <ListPreference
+        android:key="scenario_selection"
+        android:title="@string/music_headset_scenario_select"
+        android:entries="@array/scenario_selector_titles"
+        android:entryValues="@array/scenario_selector_values"
+        android:defaultValue="4" />
+    <SwitchPreferenceCompat
+        android:key="dirac_hifi_pref"
+        android:title="@string/dirac_hifi_title"
+        android:summary="@string/dirac_hifi_summary"
+        android:defaultValue="false" />
+</PreferenceScreen>
