@@ -46,16 +46,25 @@ public final class ThermalUtils {
     protected static final int STATE_NAVIGATION = 7;
     protected static final int STATE_VIDEO = 8;
     protected static final int STATE_VIDEOCHAT = 9;
+    protected static final int STATE_HIGH = 10;
+    protected static final int STATE_EXTREME = 11;
+    protected static final int STATE_HUANJI = 12;
+    protected static final int STATE_ARVR = 13;
+    protected static final int STATE_4K = 14;
+    protected static final int STATE_8K = 15;
+    protected static final int STATE_MGAME = 16;
     private static final String THERMAL_CONTROL = "thermal_control";
     private static final String THERMAL_ENABLED = "thermal_enabled";
     private static final Object sProfileLock = new Object();
     private static final String[] THERMAL_MODE_KEYS = {
             "thermal.benchmark=", "thermal.browser=", "thermal.camera=", "thermal.dialer=",
             "thermal.gaming=", "thermal.streaming=", "thermal.navigation=", "thermal.video=",
-            "thermal.videochat="
+            "thermal.videochat=", "thermal.high=", "thermal.extreme=", "thermal.huanji=",
+            "thermal.arvr=", "thermal.4k=", "thermal.8k=", "thermal.mgame="
     };
     private static final String[] THERMAL_STATE_VALUES = {
-            "0", "10", "11", "12", "8", "9", "14", "19", "21", "4"
+            "0", "10", "11", "12", "8", "9", "14", "19", "21", "4", "1", "2",
+            "3", "15", "17", "18", "20"
     };
 
     private static final String THERMAL_SCONFIG = "/sys/class/thermal/thermal_message/sconfig";
@@ -126,15 +135,11 @@ public final class ThermalUtils {
             writeValue(value);
         } else {
             String[] modes = value.split(":");
-            if (modes.length == 6) {
-                // Preserve assignments from older versions and append the Munch modes.
-                for (int i = 6; i < THERMAL_MODE_KEYS.length; i++) {
+            if (modes.length == 6 || modes.length == 8 || modes.length == 9) {
+                // Preserve saved assignments and append newly supported Munch modes.
+                for (int i = modes.length; i < THERMAL_MODE_KEYS.length; i++) {
                     value += ":" + THERMAL_MODE_KEYS[i];
                 }
-                writeValue(value);
-            } else if (modes.length == 8) {
-                // Migrate builds that already stored Navigation and Video.
-                value += ":" + THERMAL_MODE_KEYS[8];
                 writeValue(value);
             } else if (modes.length != THERMAL_MODE_KEYS.length) {
                 value = getDefaultValue();
@@ -194,7 +199,7 @@ public final class ThermalUtils {
         int mode = getStateForPackage(packageName);
         FileUtils.writeLine(THERMAL_SCONFIG, THERMAL_STATE_VALUES[mode]);
 
-        if (mode == STATE_BENCHMARK || mode == STATE_GAMING) {
+        if (mode == STATE_BENCHMARK || mode == STATE_GAMING || mode == STATE_MGAME) {
             updateTouchModes(packageName);
         } else if (mTouchModeChanged) {
             resetTouchModes();

@@ -60,6 +60,13 @@
     <string name="thermal_streaming">Streaming</string>
     <string name="thermal_video">Video</string>
     <string name="thermal_videochat">Video call</string>
+    <string name="thermal_high">High</string>
+    <string name="thermal_extreme">Extreme</string>
+    <string name="thermal_huanji">Device migration</string>
+    <string name="thermal_arvr">AR / VR</string>
+    <string name="thermal_4k">4K video</string>
+    <string name="thermal_8k">8K video</string>
+    <string name="thermal_mgame">MGame</string>
 
     <!-- Refresh Rate Settings -->
     <string name="refresh_rate_tile_title">Refresh Rate</string>

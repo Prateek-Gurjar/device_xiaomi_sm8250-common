@@ -61,7 +61,14 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
             R.string.thermal_streaming,
             R.string.thermal_navigation,
             R.string.thermal_video,
-            R.string.thermal_videochat
+            R.string.thermal_videochat,
+            R.string.thermal_high,
+            R.string.thermal_extreme,
+            R.string.thermal_huanji,
+            R.string.thermal_arvr,
+            R.string.thermal_4k,
+            R.string.thermal_8k,
+            R.string.thermal_mgame
     };
 
     private AllPackagesAdapter mAllPackagesAdapter;
@@ -320,7 +327,8 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
             holder.title.setOnClickListener(v -> holder.mode.performClick());
 
             boolean hasTouchControls = packageState == ThermalUtils.STATE_GAMING
-                    || packageState == ThermalUtils.STATE_BENCHMARK;
+                    || packageState == ThermalUtils.STATE_BENCHMARK
+                    || packageState == ThermalUtils.STATE_MGAME;
             holder.touchIcon.setVisibility(hasTouchControls ? View.VISIBLE : View.GONE);
             holder.touchIcon.setEnabled(mProfilesEnabled);
             holder.touchIcon.setOnClickListener(v -> openTouchSettings(entry));
