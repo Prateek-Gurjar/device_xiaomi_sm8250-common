@@ -60,7 +60,7 @@ public class KprofilesSettingsFragment extends SettingsBasePreferenceFragment im
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.kprofiles_settings, rootKey);
         final ActionBar actionBar = getActivity().getActionBar();
-        actionBar.setDisplayHomeAsUpEnabled(true);
+        if (actionBar != null) actionBar.setDisplayHomeAsUpEnabled(true);
 
         kProfilesAutoPreference = (SwitchPreferenceCompat) findPreference(KPROFILES_AUTO_KEY);
         if (FileUtils.fileExists(KPROFILES_AUTO_NODE)) {
@@ -123,23 +123,20 @@ public class KprofilesSettingsFragment extends SettingsBasePreferenceFragment im
         switch (key) {
             case KPROFILES_AUTO_KEY:
                 final boolean enabled = (Boolean) newValue;
-                try {
-                    FileUtils.writeLine(KPROFILES_AUTO_NODE, enabled ? ON : OFF);
-                } catch(Exception e) { }
-                break;
+                return FileUtils.writeLine(KPROFILES_AUTO_NODE, enabled ? ON : OFF);
             case KPROFILES_MODES_KEY:
                 final String value = (String) newValue;
-                try {
-                    FileUtils.writeLine(KPROFILES_MODES_NODE, value);
-                    updateTitle(value);
-                    mSelfChange = true;
-                    Intent intent = new Intent(INTENT_ACTION);
-                    intent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
-                    getContext().sendBroadcastAsUser(intent, UserHandle.CURRENT);
-                } catch(Exception e) { }
-                break;
+                if (!FileUtils.writeLine(KPROFILES_MODES_NODE, value)) return false;
+                updateTitle(value);
+                mSelfChange = true;
+                Intent intent = new Intent(INTENT_ACTION);
+                intent.setPackage(getContext().getPackageName());
+                intent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
+                getContext().sendBroadcastAsUser(intent, UserHandle.CURRENT);
+                return true;
+            default:
+                return false;
         }
-        return true;
     }
 
     @Override
@@ -186,13 +183,14 @@ public class KprofilesSettingsFragment extends SettingsBasePreferenceFragment im
     private void updateValues() {
         if (FileUtils.fileExists(KPROFILES_AUTO_NODE)) {
             final String value = FileUtils.readOneLine(KPROFILES_AUTO_NODE);
-            kProfilesAutoPreference.setChecked(value != null && value.equals(ON));
+            kProfilesAutoPreference.setChecked(value != null && value.trim().equals(ON));
         }
 
         if (IS_SUPPORTED) {
             final String value = FileUtils.readOneLine(KPROFILES_MODES_NODE);
-            kProfilesModesPreference.setValue(value != null ? value : "0");
-            updateTitle(value);
+            final String mode = value != null ? value.trim() : "0";
+            kProfilesModesPreference.setValue(mode);
+            updateTitle(mode);
         }
     }
 

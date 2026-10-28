@@ -23,11 +23,12 @@ public class KProfilesModesTileService extends TileService {
 
     private Context mContext;
     private volatile boolean mSelfChange = false;
+    private boolean mReceiverRegistered = false;
 
     @Override
     public void onCreate() {
+        super.onCreate();
         if (IS_SUPPORTED) {
-            super.onCreate();
             mContext = getApplicationContext();
             return;
         }
@@ -59,14 +60,20 @@ public class KProfilesModesTileService extends TileService {
         // Registering observers
         IntentFilter filter = new IntentFilter();
         filter.addAction(INTENT_ACTION);
-        mContext.registerReceiver(mServiceStateReceiver, filter, Context.RECEIVER_EXPORTED);
+        if (!mReceiverRegistered) {
+            mContext.registerReceiver(mServiceStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            mReceiverRegistered = true;
+        }
 
         updateTileContent();
     }
 
     @Override
     public void onStopListening() {
-        mContext.unregisterReceiver(mServiceStateReceiver);
+        if (mReceiverRegistered) {
+            mContext.unregisterReceiver(mServiceStateReceiver);
+            mReceiverRegistered = false;
+        }
         super.onStopListening();
     }
 
@@ -87,20 +94,24 @@ public class KProfilesModesTileService extends TileService {
             case "3":
                 mode = "0"; // Set mode from performance to none
                 break;
+            default:
+                mode = "1";
+                break;
         }
-        setMode(mode);
-        updateTileContent(mode);
+        if (setMode(mode)) updateTileContent(mode);
         super.onClick();
     }
 
-    private void setMode(String mode) {
-        FileUtils.writeLine(KPROFILES_MODES_NODE, mode);
+    private boolean setMode(String mode) {
+        if (!FileUtils.writeLine(KPROFILES_MODES_NODE, mode)) return false;
         mSelfChange = true;
         Intent intent = new Intent(INTENT_ACTION);
+        intent.setPackage(mContext.getPackageName());
         intent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
         mContext.sendBroadcastAsUser(intent, UserHandle.CURRENT);
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
         prefs.edit().putString(KPROFILES_MODES_KEY, mode).apply();
+        return true;
     }
 
     private String getMode() {
