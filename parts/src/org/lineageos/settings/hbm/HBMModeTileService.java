@@ -1,113 +1,77 @@
 /*
-* Copyright (C) 2018 The OmniROM Project
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program. If not, see <http://www.gnu.org/licenses/>.
-*
-*/
-
+ * Copyright (C) 2018 The OmniROM Project
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 package org.lineageos.settings.hbm;
 
-import android.annotation.TargetApi;
-import android.content.Context;
+import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.BroadcastReceiver;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
-import androidx.preference.PreferenceManager;
-import android.provider.Settings;
 
-import org.lineageos.settings.utils.FileUtils;
-import org.lineageos.settings.display.*;
+import androidx.preference.PreferenceManager;
+
+import org.lineageos.settings.display.DcDimmingTileService;
 
 public class HBMModeTileService extends TileService {
-
-    private static final String HBM = "/sys/class/drm/card0/card0-DSI-1/disp_param";
-    private static final String HBM_KEY = "hbm";
-    private static final String BACKLIGHT = "/sys/class/backlight/panel0-backlight/brightness";
-    private static final String SAVED_BRIGHTNESS = "hbm_saved_brightness";
-
-    private BroadcastReceiver screenStateReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mScreenStateReceiver = new BroadcastReceiver() {
         @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
-                SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
-                sharedPrefs.edit().putBoolean(HBM_KEY, false).commit();
-                updateUI(false);
+        public void onReceive(android.content.Context context, Intent intent) {
+            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                HBMUtils.disableForScreenOff(HBMModeTileService.this);
+                updateUI(Tile.STATE_INACTIVE);
             }
         }
     };
 
-    private void updateUI(boolean enabled) {
-        final Tile tile = getQsTile();
-        tile.setState(enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+    private void updateUI(int state) {
+        Tile tile = getQsTile();
+        if (tile == null) return;
+        tile.setState(state);
         tile.updateTile();
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        registerReceiver(screenStateReceiver, filter);
+        registerReceiver(mScreenStateReceiver, new IntentFilter(Intent.ACTION_SCREEN_OFF),
+                android.content.Context.RECEIVER_NOT_EXPORTED);
     }
 
     @Override
     public void onDestroy() {
+        unregisterReceiver(mScreenStateReceiver);
         super.onDestroy();
-        unregisterReceiver(screenStateReceiver);
     }
 
     @Override
     public void onStartListening() {
         super.onStartListening();
-        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-        updateUI(sharedPrefs.getBoolean(HBM_KEY, false));
+        if (!HBMUtils.isSupported()) {
+            updateUI(Tile.STATE_UNAVAILABLE);
+            return;
+        }
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        if (prefs.getBoolean(DcDimmingTileService.DC_DIMMING_ENABLE_KEY, false)) {
+            updateUI(Tile.STATE_UNAVAILABLE);
+        } else {
+            updateUI(prefs.getBoolean("hbm", false) ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+        }
     }
 
     @Override
-    public void onStopListening() {
-        super.onStopListening();
-    }
-    @Override
     public void onClick() {
         super.onClick();
-        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-        final boolean dcDimmingEnabled = sharedPrefs.getBoolean(DcDimmingTileService.DC_DIMMING_ENABLE_KEY, false);
-        if (dcDimmingEnabled) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        if (prefs.getBoolean(DcDimmingTileService.DC_DIMMING_ENABLE_KEY, false)) {
+            updateUI(Tile.STATE_UNAVAILABLE);
             return;
         }
-        final boolean enabled = !(sharedPrefs.getBoolean(HBM_KEY, false));
-        if (enabled) {
-            int current = Settings.System.getInt(getContentResolver(),
-                    Settings.System.SCREEN_BRIGHTNESS, 255);
-            sharedPrefs.edit().putInt(SAVED_BRIGHTNESS, current).apply();
-            FileUtils.writeLine(BACKLIGHT, "2047");
-            Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 255);
+        boolean enabled = !prefs.getBoolean("hbm", false);
+        if (HBMUtils.setManualEnabled(this, enabled)) {
+            updateUI(enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
         }
-        FileUtils.writeLine(HBM, enabled ? "0x10000" : "0xF0000");
-        if (!enabled) {
-            int saved = sharedPrefs.getInt(SAVED_BRIGHTNESS, -1);
-            if (saved >= 0) {
-                Settings.System.putInt(getContentResolver(),
-                        Settings.System.SCREEN_BRIGHTNESS, saved);
-                FileUtils.writeLine(BACKLIGHT, String.valueOf(saved * 2047 / 255));
-                sharedPrefs.edit().remove(SAVED_BRIGHTNESS).apply();
-            }
-        }
-        sharedPrefs.edit().putBoolean(HBM_KEY, enabled).commit();
-        updateUI(enabled);
     }
 }

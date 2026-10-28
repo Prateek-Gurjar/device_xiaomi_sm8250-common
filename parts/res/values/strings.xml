@@ -39,6 +39,9 @@
     <string name="hbm_disable_time_title">Disable delay</string>
     <string name="hbm_disable_time_summary">Delay before HBM turns off (seconds)</string>
     <string name="hbm_mode_warning">Long time usage of High brightness mode may damage your display</string>
+    <string name="hbm_unavailable">HBM controls are unavailable in this kernel</string>
+    <string name="hbm_disabled_by_dc_dimming">Turn off DC dimming to use HBM</string>
+    <string name="auto_hbm_unavailable">HBM or the ambient light sensor is unavailable</string>
 
     <!-- Thermal Profiles -->
     <string name="thermal_title">Thermal Profiles</string>

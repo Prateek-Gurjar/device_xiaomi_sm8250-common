@@ -30,6 +30,7 @@ import com.android.settingslib.widget.SettingsBasePreferenceFragment;
 
 import org.lineageos.settings.utils.FileUtils;
 import org.lineageos.settings.R;
+import org.lineageos.settings.display.DcDimmingTileService;
 
 public class HBMFragment extends SettingsBasePreferenceFragment
         implements Preference.OnPreferenceChangeListener {
@@ -49,12 +50,17 @@ public class HBMFragment extends SettingsBasePreferenceFragment
 
         // HBM
         mHBMModeSwitch = (TwoStatePreference) findPreference(KEY_HBM_SWITCH);
-	mHBMModeSwitch.setOnPreferenceChangeListener(new HBMModeSwitch(getContext()));
+        mHBMModeSwitch.setOnPreferenceChangeListener(new HBMModeSwitch(getContext()));
 
         // AutoHBM
         mAutoHBMSwitch = (TwoStatePreference) findPreference(KEY_AUTO_HBM_SWITCH);
         mAutoHBMSwitch.setOnPreferenceChangeListener(this);
         mAutoHBMSwitch.setChecked(PreferenceManager.getDefaultSharedPreferences(getContext()).getBoolean(HBMFragment.KEY_AUTO_HBM_SWITCH, false));
+        if (!HBMUtils.isAutoSupported(getContext())) {
+            mAutoHBMSwitch.setEnabled(false);
+            mAutoHBMSwitch.setSummary(R.string.auto_hbm_unavailable);
+        }
+        updateManualControlState();
     }
 
     public static boolean isAUTOHBMEnabled(Context context) {
@@ -62,9 +68,30 @@ public class HBMFragment extends SettingsBasePreferenceFragment
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        updateManualControlState();
+    }
+
+    private void updateManualControlState() {
+        if (!HBMUtils.isSupported()) {
+            mHBMModeSwitch.setEnabled(false);
+            mHBMModeSwitch.setSummary(R.string.hbm_unavailable);
+        } else if (PreferenceManager.getDefaultSharedPreferences(getContext()).getBoolean(
+                DcDimmingTileService.DC_DIMMING_ENABLE_KEY, false)) {
+            mHBMModeSwitch.setEnabled(false);
+            mHBMModeSwitch.setSummary(R.string.hbm_disabled_by_dc_dimming);
+        } else {
+            mHBMModeSwitch.setEnabled(true);
+            mHBMModeSwitch.setSummary(R.string.hbm_mode_summary);
+        }
+    }
+
+    @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         if (preference == mAutoHBMSwitch) {
             Boolean enabled = (Boolean) newValue;
+            if (enabled && !HBMUtils.isAutoSupported(getContext())) return false;
             SharedPreferences.Editor prefChange = PreferenceManager.getDefaultSharedPreferences(getContext()).edit();
             prefChange.putBoolean(KEY_AUTO_HBM_SWITCH, enabled).commit();
             FileUtils.enableService(getContext());

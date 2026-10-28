@@ -17,19 +17,13 @@
 package org.lineageos.settings.display;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.provider.Settings;
-
+import android.content.Intent;
 import androidx.preference.PreferenceManager;
-
+import org.lineageos.settings.hbm.HBMUtils;
 import org.lineageos.settings.utils.FileUtils;
 
 public final class DcDimmingUtils {
     public static final String NODE = "/sys/devices/platform/soc/soc:qcom,dsi-display-primary/dimlayer_exposure";
-    private static final String HBM_NODE = "/sys/class/drm/card0/card0-DSI-1/disp_param";
-    private static final String BACKLIGHT_NODE = "/sys/class/backlight/panel0-backlight/brightness";
-    private static final String HBM_KEY = "hbm";
-    private static final String SAVED_BRIGHTNESS = "hbm_saved_brightness";
 
     private DcDimmingUtils() {}
 
@@ -42,20 +36,11 @@ public final class DcDimmingUtils {
             return false;
         }
 
-        if (enabled) disableHBM(context);
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putBoolean(DcDimmingTileService.DC_DIMMING_ENABLE_KEY, enabled).apply();
+        if (enabled) HBMUtils.disableForDcDimming(context);
+        else context.sendBroadcast(new Intent(HBMUtils.ACTION_MODE_CHANGED)
+                .setPackage(context.getPackageName()));
         return true;
-    }
-
-    private static void disableHBM(Context context) {
-        FileUtils.writeLine(HBM_NODE, "0xF0000");
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        int savedBrightness = prefs.getInt(SAVED_BRIGHTNESS, -1);
-        if (savedBrightness >= 0) {
-            Settings.System.putInt(context.getContentResolver(),
-                    Settings.System.SCREEN_BRIGHTNESS, savedBrightness);
-            FileUtils.writeLine(BACKLIGHT_NODE, String.valueOf(savedBrightness * 2047 / 255));
-            prefs.edit().remove(SAVED_BRIGHTNESS).apply();
-        }
-        prefs.edit().putBoolean(HBM_KEY, false).apply();
     }
 }

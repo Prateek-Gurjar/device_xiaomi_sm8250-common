@@ -36,6 +36,7 @@ import org.lineageos.settings.utils.FileUtils;
 import org.lineageos.settings.gpumanager.GpuManagerUtils;
 import org.lineageos.settings.batterymonitor.BatteryMonitorUtils;
 import org.lineageos.settings.display.DcDimmingUtils;
+import org.lineageos.settings.hbm.HBMUtils;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
 
@@ -61,6 +62,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         GpuManagerUtils.applySavedSettings(context);
         PocketService.startService(context);
         BatteryMonitorUtils.start(context);
+        HBMUtils.disableForScreenOff(context);
         FileUtils.enableService(context);
         overrideHdrTypes(context);
 
