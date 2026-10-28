@@ -17,29 +17,26 @@
 package org.lineageos.settings.dirac;
 
 import android.content.Context;
-import android.content.Intent;
-import android.os.Handler;
-import android.os.UserHandle;
-import android.os.SystemClock;
-import android.view.KeyEvent;
 import android.media.AudioManager;
-import android.media.session.MediaController;
-import android.media.session.MediaSessionManager;
-import android.media.session.PlaybackState;
-import java.util.List;
+import android.util.Log;
 
 public class DiracUtils {
 
+    private static final String TAG = "DiracUtils";
+
     private static DiracUtils mInstance;
     private DiracSound mDiracSound;
-    private MediaSessionManager mMediaSessionManager;
-    private Handler mHandler = new Handler();
     private Context mContext;
+    private boolean mAvailable;
 
     public DiracUtils(Context context) {
-        mContext = context;
-        mMediaSessionManager = (MediaSessionManager) context.getSystemService(Context.MEDIA_SESSION_SERVICE);
-        mDiracSound = new DiracSound(0, 0);
+        mContext = context.getApplicationContext();
+        try {
+            mDiracSound = new DiracSound(0, 0);
+            mAvailable = true;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Mi Sound effect is unavailable", e);
+        }
     }
 
     public static synchronized DiracUtils getInstance(Context context) {
@@ -50,97 +47,80 @@ public class DiracUtils {
         return mInstance;
     }
 
-    private void triggerPlayPause(MediaController controller) {
-        long when = SystemClock.uptimeMillis();
-        final KeyEvent evDownPause = new KeyEvent(when, when, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PAUSE, 0);
-        final KeyEvent evUpPause = KeyEvent.changeAction(evDownPause, KeyEvent.ACTION_UP);
-        final KeyEvent evDownPlay = new KeyEvent(when, when, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY, 0);
-        final KeyEvent evUpPlay = KeyEvent.changeAction(evDownPlay, KeyEvent.ACTION_UP);
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                controller.dispatchMediaButtonEvent(evDownPause);
-            }
-        });
-        mHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                controller.dispatchMediaButtonEvent(evUpPause);
-            }
-        }, 20);
-        mHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                controller.dispatchMediaButtonEvent(evDownPlay);
-            }
-        }, 1000);
-        mHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                controller.dispatchMediaButtonEvent(evUpPlay);
-            }
-        }, 1020);
-    }
-
-    private int getMediaControllerPlaybackState(MediaController controller) {
-        if (controller != null) {
-            final PlaybackState playbackState = controller.getPlaybackState();
-            if (playbackState != null) {
-                return playbackState.getState();
-            }
-        }
-        return PlaybackState.STATE_NONE;
-    }
-
-    private void refreshPlaybackIfNecessary(){
-        if (mMediaSessionManager == null) return;
-
-        final List<MediaController> sessions
-                = mMediaSessionManager.getActiveSessionsForUser(
-                null, UserHandle.ALL);
-        for (MediaController aController : sessions) {
-            if (PlaybackState.STATE_PLAYING ==
-                    getMediaControllerPlaybackState(aController)) {
-                triggerPlayPause(aController);
-                break;
-            }
-        }
-    }
-
     public void setEnabled(boolean enable) {
-        mDiracSound.setEnabled(enable);
-        mDiracSound.setMusic(enable ? 1 : 0);
-        refreshPlaybackIfNecessary();
+        if (!mAvailable) return;
+        try {
+            mDiracSound.setMusic(enable ? 1 : 0);
+            mDiracSound.setEnabled(enable);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to change Mi Sound state", e);
+            mAvailable = false;
+        }
     }
 
     public boolean isDiracEnabled() {
-        return mDiracSound != null && mDiracSound.getMusic() == 1;
+        if (!mAvailable) return false;
+        try {
+            return mDiracSound.getMusic() == 1;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to read Mi Sound state", e);
+            mAvailable = false;
+            return false;
+        }
+    }
+
+    public boolean isAvailable() {
+        return mAvailable;
     }
 
     public void setLevel(String preset) {
+        if (!mAvailable) return;
         String[] level = preset.split("\\s*,\\s*");
 
-        for (int band = 0; band <= level.length - 1; band++) {
-            mDiracSound.setLevel(band, Float.valueOf(level[band]));
+        try {
+            for (int band = 0; band < level.length; band++) {
+                mDiracSound.setLevel(band, Float.valueOf(level[band]));
+            }
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to set Mi Sound equalizer preset", e);
+            mAvailable = false;
         }
     }
 
     public void setHeadsetType(int paramInt) {
-        mDiracSound.setHeadsetType(paramInt);
+        if (!mAvailable) return;
+        try {
+            mDiracSound.setHeadsetType(paramInt);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to set Mi Sound headset type", e);
+            mAvailable = false;
+        }
     }
 
     public boolean getHifiMode() {
         AudioManager audioManager = mContext.getSystemService(AudioManager.class);
-        return audioManager.getParameters("hifi_mode").contains("true");
+        return audioManager != null && audioManager.getParameters("hifi_mode").contains("true");
     }
 
     public void setHifiMode(int paramInt) {
         AudioManager audioManager = mContext.getSystemService(AudioManager.class);
-        audioManager.setParameters("hifi_mode=" + (paramInt == 1 ? true : false));
-        mDiracSound.setHifiMode(paramInt);
+        if (!mAvailable || audioManager == null) return;
+        try {
+            audioManager.setParameters("hifi_mode=" + (paramInt == 1));
+            mDiracSound.setHifiMode(paramInt);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to set Mi Sound Hi-Fi mode", e);
+            mAvailable = false;
+        }
     }
 
     public void setScenario(int sceneInt) {
-        mDiracSound.setScenario(sceneInt);
+        if (!mAvailable) return;
+        try {
+            mDiracSound.setScenario(sceneInt);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to set Mi Sound scenario", e);
+            mAvailable = false;
+        }
     }
 }

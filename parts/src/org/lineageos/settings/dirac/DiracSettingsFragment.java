@@ -77,10 +77,12 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
         mScenes = (ListPreference) findPreference(PREF_SCENE);
         mScenes.setOnPreferenceChangeListener(this);
 
-        mHeadsetType.setEnabled(enhancerEnabled);
-        mPreset.setEnabled(enhancerEnabled);
-        mHifi.setEnabled(enhancerEnabled);
-        mScenes.setEnabled(enhancerEnabled);
+        boolean available = mDiracUtils != null && mDiracUtils.isAvailable();
+        mSwitchBar.setEnabled(available);
+        mHeadsetType.setEnabled(available && enhancerEnabled);
+        mPreset.setEnabled(available && enhancerEnabled);
+        mHifi.setEnabled(available && enhancerEnabled);
+        mScenes.setEnabled(available && enhancerEnabled);
     }
 
     @Override
@@ -90,10 +92,12 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
 
             boolean isChecked = (Boolean) newValue;
             mDiracUtils.setEnabled(isChecked);
-            mHifi.setEnabled(isChecked);
-            mHeadsetType.setEnabled(isChecked);
-            mPreset.setEnabled(isChecked);
-            mScenes.setEnabled(isChecked);
+            boolean available = mDiracUtils.isAvailable();
+            mSwitchBar.setEnabled(available);
+            mHifi.setEnabled(available && isChecked);
+            mHeadsetType.setEnabled(available && isChecked);
+            mPreset.setEnabled(available && isChecked);
+            mScenes.setEnabled(available && isChecked);
             return true;
         }
 
