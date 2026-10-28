@@ -262,4 +262,6 @@
     <string name="core_7">Core 7 (Prime)</string>
     <string name="battery_monitor_title">Battery monitor</string>
     <string name="battery_monitor_summary">Battery readings and usage estimates</string>
+    <string name="battery_monitor_tile_on">Monitoring</string>
+    <string name="battery_monitor_tile_off">Stopped</string>
 </resources>

@@ -17,8 +17,11 @@ public class BatteryMonitorActivity extends CollapsingToolbarBaseActivity {
             PreferenceScreen screen = getPreferenceManager().createPreferenceScreen(requireContext()); setPreferenceScreen(screen);
             SwitchPreferenceCompat master = toggle(BatteryMonitorUtils.ENABLED, "Enable battery monitor", "Show selected battery information in an ongoing notification", false);
             master.setOnPreferenceChangeListener((pref, value) -> {
+                boolean enabled = Boolean.TRUE.equals(value);
+                BatteryMonitorUtils.prefs(requireContext()).edit()
+                        .putBoolean(BatteryMonitorUtils.ENABLED, enabled).apply();
                 Intent service = new Intent(requireContext(), BatteryMonitorService.class);
-                if (Boolean.TRUE.equals(value)) requireContext().startForegroundService(service);
+                if (enabled) requireContext().startForegroundService(service);
                 else requireContext().stopService(service);
                 return true;
             });

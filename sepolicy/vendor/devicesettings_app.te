@@ -33,6 +33,9 @@ allow devicesettings_app vendor_sysfs_kgsl_gpuclk:file { getattr open read write
 # Read battery telemetry for bypass charging safety checks.
 allow devicesettings_app sysfs_battery_supply:dir search;
 allow devicesettings_app sysfs_battery_supply:file r_file_perms;
+r_dir_file(devicesettings_app, sysfs_batteryinfo);
+allow devicesettings_app vendor_sysfs_usb_supply:dir search;
+allow devicesettings_app vendor_sysfs_usb_supply:file r_file_perms;
 
 # Miui Sepolicy for Vendor Audio Files
 allow devicesettings_app vendor_audio_data_file:dir {write add_name search};

@@ -47,8 +47,7 @@ public class BatteryMonitorService extends Service {
             getSystemService(NotificationManager.class).createNotificationChannel(channel);
         }
         startForeground(NOTIFICATION_ID, notification("Reading battery…", ""));
-        android.content.SharedPreferences p = BatteryMonitorUtils.prefs(this);
-        if (p.getBoolean("bm_reset_boot", false)) resetUsage(); else loadStats();
+        loadStats();
         registerReceiver(powerReceiver, new IntentFilter(Intent.ACTION_POWER_CONNECTED));
         previousElapsed = SystemClock.elapsedRealtime();
         previousUptime = SystemClock.uptimeMillis();
@@ -58,7 +57,6 @@ public class BatteryMonitorService extends Service {
         screenFilter.addAction(Intent.ACTION_SCREEN_ON);
         screenFilter.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(screenReceiver, screenFilter);
-        handler.post(update);
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -66,7 +64,14 @@ public class BatteryMonitorService extends Service {
         if (!BatteryMonitorUtils.prefs(this).getBoolean(BatteryMonitorUtils.ENABLED, false)) {
             stopSelf(); return START_NOT_STICKY;
         }
-        refresh(); return START_STICKY;
+        if (intent != null && intent.getBooleanExtra(BatteryMonitorUtils.EXTRA_BOOT_START, false)
+                && BatteryMonitorUtils.prefs(this).getBoolean("bm_reset_boot", false)) {
+            resetUsage();
+        }
+        handler.removeCallbacks(update);
+        refresh();
+        handler.postDelayed(update, 60_000);
+        return START_STICKY;
     }
 
     private void refresh() {
@@ -85,7 +90,9 @@ public class BatteryMonitorService extends Service {
             int inputVoltage = firstNumber("/sys/class/power_supply/usb/voltage_now", "/sys/class/power_supply/main/voltage_now");
             long fullSeconds = number("/sys/class/power_supply/battery/time_to_full_now", -1);
             String status = read("/sys/class/power_supply/battery/status");
-            boolean charging = "Charging".equals(status);
+            boolean charging = "Charging".equals(status) || "Full".equals(status);
+            int chargingCurrent = inputCurrent != 0 ? inputCurrent : current;
+            int chargingVoltage = inputVoltage > 0 ? inputVoltage : voltage;
 
             if (level >= 0) {
                 if (checkLevelReset(level, p, charging)) elapsedDelta = uptimeDelta = sleepDelta = 0;
@@ -116,14 +123,14 @@ public class BatteryMonitorService extends Service {
             String tempValue = temp < 0 ? "—" : String.format(Locale.getDefault(), "%.1f°%s",
                     unit.equals("f") ? (temp / 10f * 9 / 5) + 32 : temp / 10f, unit.equals("f") ? "F" : "C");
             add(fields, p, "bm_show_temp", "🌡", "Temperature", tempValue);
-            add(fields, p, "bm_current", "⚡", charging ? "Charge current" : "Discharging", String.format(Locale.getDefault(), "%d mA", Math.abs((charging && inputCurrent != 0 ? inputCurrent : current) / 1000)));
+            add(fields, p, "bm_current", "⚡", charging ? "Charge current" : "Discharging", String.format(Locale.getDefault(), "%d mA", Math.abs((charging ? chargingCurrent : current) / 1000)));
             if (!charging) {
                 add(fields, p, "bm_drain", "↘", "Active drain", rate(screenOnDrain, screenOnMs));
                 add(fields, p, "bm_idle", "◌", "Idle drain", rate(screenOffDrain, screenOffMs));
             }
             if (charging && p.getBoolean("bm_charge", true)) {
-                double watts = Math.abs(inputCurrent) * (inputVoltage > 0 ? inputVoltage : voltage) / 1.0e9;
-                String charge = String.format(Locale.getDefault(), "%d mA · %.1f W", Math.abs(inputCurrent / 1000), watts);
+                double watts = Math.abs((double) chargingCurrent) * chargingVoltage / 1.0e12;
+                String charge = String.format(Locale.getDefault(), "%d mA · %.1f W", Math.abs(chargingCurrent / 1000), watts);
                 if (fullSeconds > 0) charge += " · " + formatDuration(fullSeconds * 1000);
                 add(fields, p, "bm_charge", "ϟ", "Charging", charge);
             }
@@ -170,7 +177,7 @@ public class BatteryMonitorService extends Service {
         PendingIntent open = PendingIntent.getActivity(this, 0, new Intent(this, BatteryMonitorActivity.class),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this, CHANNEL)
-                .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
+                .setSmallIcon(R.drawable.ic_battery_monitor_tile)
                 .setContentTitle("Battery monitor").setContentText(shortText)
                 .setStyle(new Notification.BigTextStyle().bigText(expandedText))
                 .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true).build();
@@ -213,7 +220,10 @@ public class BatteryMonitorService extends Service {
     }
     private static String read(String path) { try (BufferedReader r = new BufferedReader(new FileReader(path))) { return r.readLine().trim(); } catch (Exception e) { return ""; } }
     private static int number(String path, int fallback) { try { return Integer.parseInt(read(path)); } catch (Exception e) { return fallback; } }
-    private static int firstNumber(String first, String second) { int value=number(first,-1); return value < 0 ? number(second,0) : value; }
+    private static int firstNumber(String first, String second) {
+        int value = number(first, Integer.MIN_VALUE);
+        return value == Integer.MIN_VALUE ? number(second, 0) : value;
+    }
     private static String formatDuration(long ms) { long minutes=ms/60_000; return (minutes/60)+"h "+(minutes%60)+"m"; }
     @Override public IBinder onBind(Intent intent) { return null; }
     @Override public void onDestroy() { handler.removeCallbacks(update); try { unregisterReceiver(powerReceiver); unregisterReceiver(screenReceiver); } catch (Exception ignored) {} super.onDestroy(); }
