@@ -22,47 +22,26 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.util.Log;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 public class ProximitySensor implements SensorEventListener {
 
-    private static final boolean DEBUG = false;
-    private static final String TAG = "ProximitySensor";
-
-    // Maximum time for the hand to cover the sensor: 1s
-    private static final int HANDWAVE_MAX_DELTA_NS = 1000 * 1000 * 1000;
-
-    // Minimum time until the device is considered to have been in the pocket: 2s
-    private static final int POCKET_MIN_DELTA_NS = 2000 * 1000 * 1000;
-    private boolean mSawNear = false;
-    private SensorManager mSensorManager;
-    private Sensor mSensor;
-    private Context mContext;
-    private ExecutorService mExecutorService;
-    private long mInPocketTime = 0;
+    private volatile boolean mSawNear;
+    private final SensorManager mSensorManager;
+    private final Sensor mSensor;
+    private volatile boolean mEnabled;
 
     public ProximitySensor(Context context) {
-        mContext = context;
-        mSensorManager = mContext.getSystemService(SensorManager.class);
-        mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY, false);
-        mExecutorService = Executors.newSingleThreadExecutor();
-    }
-
-    private Future<?> submit(Runnable runnable) {
-        return mExecutorService.submit(runnable);
+        Context appContext = context.getApplicationContext();
+        mSensorManager = appContext.getSystemService(SensorManager.class);
+        mSensor = mSensorManager == null ? null
+                : mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY, false);
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        boolean isNear = event.values[0] < mSensor.getMaximumRange();
-        if (!mSawNear || isNear) {
-            mInPocketTime = event.timestamp;
-        }
-        mSawNear = isNear;
+        if (!mEnabled) return;
+        if (event.values == null || event.values.length == 0 || event.sensor == null) return;
+        mSawNear = event.values[0] < event.sensor.getMaximumRange();
     }
 
     @Override
@@ -70,19 +49,24 @@ public class ProximitySensor implements SensorEventListener {
         /* Empty */
     }
 
-    public void enable() {
-        if (DEBUG) Log.d(TAG, "Enabling");
-        submit(() -> {
-            mSensorManager.registerListener(this, mSensor,
-                    SensorManager.SENSOR_DELAY_NORMAL);
-        });
+    public synchronized void enable() {
+        if (mSensorManager == null || mSensor == null) {
+            mSawNear = false;
+            return;
+        }
+        if (mEnabled) return;
+
+        mEnabled = mSensorManager.registerListener(this, mSensor,
+                SensorManager.SENSOR_DELAY_NORMAL);
+        if (!mEnabled) mSawNear = false;
     }
 
-    public void disable() {
-        if (DEBUG) Log.d(TAG, "Disabling");
-        submit(() -> {
+    public synchronized void disable() {
+        if (mSensorManager != null && mSensor != null && mEnabled) {
             mSensorManager.unregisterListener(this, mSensor);
-        });
+        }
+        mEnabled = false;
+        mSawNear = false;
     }
 
     public boolean getSawNear() {
