@@ -245,59 +245,8 @@ public class RefreshSettingsFragment extends SettingsBasePreferenceFragment
         }
     }
 
-<<<<<<< HEAD
     private class AllPackagesAdapter extends RecyclerView.Adapter<ViewHolder>
             implements SectionIndexer {
-=======
-     private class ModeAdapter extends BaseAdapter {
-
-        private final LayoutInflater inflater;
-        private final int[] items = {
-                R.string.refresh_default,
-                R.string.refresh_standard,
-                R.string.refresh_extreme,
-                R.string.refresh_land
-        };
-
-        private ModeAdapter(Context context) {
-            inflater = LayoutInflater.from(context);
-        }
-
-        @Override
-        public int getCount() {
-            return items.length;
-        }
-
-        @Override
-        public Object getItem(int position) {
-            return items[position];
-        }
-
-        @Override
-        public long getItemId(int position) {
-            return 0;
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            TextView view;
-            if (convertView != null) {
-                view = (TextView) convertView;
-            } else {
-                view = (TextView) inflater.inflate(android.R.layout.simple_spinner_dropdown_item,
-                        parent, false);
-            }
-
-            view.setText(items[position]);
-            view.setTextSize(14f);
-
-            return view;
-        }
-    }
-
-        private class AllPackagesAdapter extends RecyclerView.Adapter<ViewHolder>
-            implements AdapterView.OnItemSelectedListener, SectionIndexer {
->>>>>>> ddf717e (sm8250-common: Add support for `60Hz in Landscape` in Per-App-RR)
 
         private List<ApplicationsState.AppEntry> mEntries = new ArrayList<>();
         private String[] mSections = new String[0];
@@ -365,20 +314,7 @@ public class RefreshSettingsFragment extends SettingsBasePreferenceFragment
                 return -1;
             }
             final int index = Arrays.binarySearch(mPositions, position);
-<<<<<<< HEAD
             return index >= 0 ? index : -index - 2;
-=======
-
-            /*
-             * Consider this example: section positions are 0, 3, 5; the supplied
-             * position is 4. The section corresponding to position 4 starts at
-             * position 3, so the expected return value is 1. Binary search will not
-             * find 4 in the array and thus will return -insertPosition-1, i.e. -3.
-             * To get from that number to the expected value of 1 we need to negate
-             * and subtract 2.
-             */
-            return index >= 0 ? index : -index - 3;
->>>>>>> ddf717e (sm8250-common: Add support for `60Hz in Landscape` in Per-App-RR)
         }
 
         @Override
