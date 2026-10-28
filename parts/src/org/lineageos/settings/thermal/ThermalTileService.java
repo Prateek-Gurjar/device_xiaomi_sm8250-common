@@ -18,42 +18,40 @@
 
 package org.lineageos.settings.thermal;
 
-import android.annotation.TargetApi;
+import android.app.PendingIntent;
 import android.content.Intent;
+import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
 
-@TargetApi(24)
+import org.lineageos.settings.R;
+
+/** Opens the per-app thermal profile controls from Quick Settings. */
 public class ThermalTileService extends TileService {
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-    }
-
-    @Override
-    public void onTileAdded() {
-        super.onTileAdded();
-    }
-
-    @Override
-    public void onTileRemoved() {
-        super.onTileRemoved();
-    }
 
     @Override
     public void onStartListening() {
         super.onStartListening();
-    }
+        Tile tile = getQsTile();
+        if (tile == null) return;
 
-    @Override
-    public void onStopListening() {
-        super.onStopListening();
+        tile.setState(ThermalUtils.isServiceEnabled(this)
+                ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+        tile.setLabel(getString(R.string.thermal_title));
+        tile.updateTile();
     }
 
     @Override
     public void onClick() {
         super.onClick();
-        Intent ThermalProfiles = new Intent(this, ThermalActivity.class);
-        ThermalProfiles.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivityAndCollapse(ThermalProfiles);
+        Intent intent = new Intent(this, ThermalActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Runnable launch = () -> startActivityAndCollapse(pendingIntent);
+        if (isLocked()) {
+            unlockAndRun(launch);
+        } else {
+            launch.run();
+        }
     }
 }

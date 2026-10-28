@@ -21,6 +21,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.text.TextUtils;
 import android.view.Display;
 import android.view.Surface;
 import android.view.WindowManager;
@@ -42,23 +43,20 @@ public final class ThermalUtils {
     protected static final int STATE_DIALER = 4;
     protected static final int STATE_GAMING = 5;
     protected static final int STATE_STREAMING = 6;
+    protected static final int STATE_NAVIGATION = 7;
+    protected static final int STATE_VIDEO = 8;
+    protected static final int STATE_VIDEOCHAT = 9;
     private static final String THERMAL_CONTROL = "thermal_control";
     private static final String THERMAL_ENABLED = "thermal_enabled";
     private static final Object sProfileLock = new Object();
-    private static final String THERMAL_STATE_DEFAULT = "0";
-    private static final String THERMAL_STATE_BENCHMARK = "10";
-    private static final String THERMAL_STATE_BROWSER = "11";
-    private static final String THERMAL_STATE_CAMERA = "12";
-    private static final String THERMAL_STATE_DIALER = "8";
-    private static final String THERMAL_STATE_GAMING = "9";
-    private static final String THERMAL_STATE_STREAMING = "14";
-
-    private static final String THERMAL_BENCHMARK = "thermal.benchmark=";
-    private static final String THERMAL_BROWSER = "thermal.browser=";
-    private static final String THERMAL_CAMERA = "thermal.camera=";
-    private static final String THERMAL_DIALER = "thermal.dialer=";
-    private static final String THERMAL_GAMING = "thermal.gaming=";
-    private static final String THERMAL_STREAMING = "thermal.streaming=";
+    private static final String[] THERMAL_MODE_KEYS = {
+            "thermal.benchmark=", "thermal.browser=", "thermal.camera=", "thermal.dialer=",
+            "thermal.gaming=", "thermal.streaming=", "thermal.navigation=", "thermal.video=",
+            "thermal.videochat="
+    };
+    private static final String[] THERMAL_STATE_VALUES = {
+            "0", "10", "11", "12", "8", "9", "14", "19", "21", "4"
+    };
 
     private static final String THERMAL_SCONFIG = "/sys/class/thermal/thermal_message/sconfig";
 
@@ -123,75 +121,61 @@ public final class ThermalUtils {
     private String getValue() {
         String value = mSharedPrefs.getString(THERMAL_CONTROL, null);
 
-        if (value != null) {
-             String[] modes = value.split(":");
-             if (modes.length != 6) value = null;
-         }
-
         if (value == null || value.isEmpty()) {
-            value = THERMAL_BENCHMARK + ":" + THERMAL_BROWSER + ":" + THERMAL_CAMERA + ":" +
-                    THERMAL_DIALER + ":" + THERMAL_GAMING + ":" + THERMAL_STREAMING;
+            value = getDefaultValue();
             writeValue(value);
+        } else {
+            String[] modes = value.split(":");
+            if (modes.length == 6) {
+                // Preserve assignments from older versions and append the Munch modes.
+                for (int i = 6; i < THERMAL_MODE_KEYS.length; i++) {
+                    value += ":" + THERMAL_MODE_KEYS[i];
+                }
+                writeValue(value);
+            } else if (modes.length == 8) {
+                // Migrate builds that already stored Navigation and Video.
+                value += ":" + THERMAL_MODE_KEYS[8];
+                writeValue(value);
+            } else if (modes.length != THERMAL_MODE_KEYS.length) {
+                value = getDefaultValue();
+                writeValue(value);
+            }
         }
         return value;
+    }
+
+    private static String getDefaultValue() {
+        StringBuilder value = new StringBuilder();
+        for (String mode : THERMAL_MODE_KEYS) {
+            if (value.length() > 0) value.append(':');
+            value.append(mode);
+        }
+        return value.toString();
     }
 
     protected void writePackage(String packageName, int mode) {
         String value = getValue();
         value = value.replace(packageName + ",", "");
         String[] modes = value.split(":");
-        String finalString;
-
-        switch (mode) {
-            case STATE_BENCHMARK:
-                modes[0] = modes[0] + packageName + ",";
-                break;
-            case STATE_BROWSER:
-                modes[1] = modes[1] + packageName + ",";
-                break;
-            case STATE_CAMERA:
-                modes[2] = modes[2] + packageName + ",";
-                break;
-            case STATE_DIALER:
-                modes[3] = modes[3] + packageName + ",";
-                break;
-            case STATE_GAMING:
-                modes[4] = modes[4] + packageName + ",";
-                break;
-            case STATE_STREAMING:
-                modes[5] = modes[5] + packageName + ",";
-                break;
+        if (mode > STATE_DEFAULT && mode <= THERMAL_MODE_KEYS.length) {
+            modes[mode - 1] += packageName + ",";
         }
-
-        finalString = modes[0] + ":" + modes[1] + ":" + modes[2] + ":" + modes[3] + ":" +
-                modes[4] + ":" + modes[5];
-
-        writeValue(finalString);
+        writeValue(TextUtils.join(":", modes));
     }
 
     protected int getStateForPackage(String packageName) {
         String value = getValue();
         String[] modes = value.split(":");
-        int state = STATE_DEFAULT;
-        if (modes[0].contains(packageName + ",")) {
-            state = STATE_BENCHMARK;
-        } else if (modes[1].contains(packageName + ",")) {
-            state = STATE_BROWSER;
-        } else if (modes[2].contains(packageName + ",")) {
-            state = STATE_CAMERA;
-        } else if (modes[3].contains(packageName + ",")) {
-            state = STATE_DIALER;
-        } else if (modes[4].contains(packageName + ",")) {
-            state = STATE_GAMING;
-        } else if (modes[5].contains(packageName + ",")) {
-            state = STATE_STREAMING;
+        for (int i = 0; i < modes.length; i++) {
+            if (modes[i].contains(packageName + ",")) {
+                return i + 1;
+            }
         }
-
-        return state;
+        return STATE_DEFAULT;
     }
 
     protected void setDefaultThermalProfile() {
-        FileUtils.writeLine(THERMAL_SCONFIG, THERMAL_STATE_DEFAULT);
+        FileUtils.writeLine(THERMAL_SCONFIG, THERMAL_STATE_VALUES[STATE_DEFAULT]);
     }
 
     protected void setThermalProfile(String packageName) {
@@ -207,30 +191,10 @@ public final class ThermalUtils {
     }
 
     private void applyThermalProfile(String packageName) {
-        String value = getValue();
-        String modes[];
-        String state = THERMAL_STATE_DEFAULT;
+        int mode = getStateForPackage(packageName);
+        FileUtils.writeLine(THERMAL_SCONFIG, THERMAL_STATE_VALUES[mode]);
 
-        if (value != null) {
-            modes = value.split(":");
-
-            if (modes[0].contains(packageName + ",")) {
-                state = THERMAL_STATE_BENCHMARK;
-            } else if (modes[1].contains(packageName + ",")) {
-                state = THERMAL_STATE_BROWSER;
-            } else if (modes[2].contains(packageName + ",")) {
-                state = THERMAL_STATE_CAMERA;
-            } else if (modes[3].contains(packageName + ",")) {
-                state = THERMAL_STATE_DIALER;
-            } else if (modes[4].contains(packageName + ",")) {
-                state = THERMAL_STATE_GAMING;
-            } else if (modes[5].contains(packageName + ",")) {
-                state = THERMAL_STATE_STREAMING;
-            }
-        }
-        FileUtils.writeLine(THERMAL_SCONFIG, state);
-
-        if (state == THERMAL_STATE_BENCHMARK || state == THERMAL_STATE_GAMING) {
+        if (mode == STATE_BENCHMARK || mode == STATE_GAMING) {
             updateTouchModes(packageName);
         } else if (mTouchModeChanged) {
             resetTouchModes();

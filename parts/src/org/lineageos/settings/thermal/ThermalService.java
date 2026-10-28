@@ -29,6 +29,7 @@ import android.content.res.Configuration;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.os.RemoteException;
 import android.util.Log;
 
@@ -37,7 +38,7 @@ public class ThermalService extends Service {
     private static final String TAG = "ThermalService";
     private static final boolean DEBUG = false;
 
-    private boolean mScreenOn = true;
+    private boolean mScreenOn;
     private String mCurrentApp = "";
     private ThermalUtils mThermalUtils;
 
@@ -53,13 +54,15 @@ public class ThermalService extends Service {
                 case Intent.ACTION_SCREEN_OFF:
                     mScreenOn = false;
                     setThermalProfile();
+                    // The screen-off path selects the default profile and releases
+                    // any game-specific touch settings.
+                    mThermalUtils.resetTouchModes();
                     break;
                 case Intent.ACTION_SCREEN_ON:
                     mScreenOn = true;
                     setThermalProfile();
                     break;
             }
-            mThermalUtils.resetTouchModes();
         }
     };
 
@@ -71,6 +74,8 @@ public class ThermalService extends Service {
             stopSelf();
             return;
         }
+        PowerManager powerManager = getSystemService(PowerManager.class);
+        mScreenOn = powerManager != null && powerManager.isInteractive();
         mThermalUtils = new ThermalUtils(this);
         try {
             mActivityTaskManager = ActivityTaskManager.getService();
