@@ -173,6 +173,17 @@
         </service>
 
         <service
+            android:name=".corecontrol.CoreControlTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_core_control_tile"
+            android:label="@string/core_control_title"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
             android:name=".gpumanager.GpuManagerTileService"
             android:exported="true"
             android:icon="@drawable/ic_settings_popup"
@@ -222,6 +233,12 @@
             <meta-data
                 android:name="com.android.settings.summary"
                 android:resource="@string/core_control_summary" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_settings_core_control" />
+            <meta-data
+                android:name="com.android.settings.icon_tintable"
+                android:value="true" />
         </activity>
 
         <activity
