@@ -18,47 +18,55 @@ package org.lineageos.settings.touchsampling;
 
 import android.os.Bundle;
 import android.view.MenuItem;
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.provider.Settings;
 import androidx.preference.Preference;
 import androidx.preference.Preference.OnPreferenceChangeListener;
 import androidx.preference.PreferenceFragment;
 import androidx.preference.SwitchPreferenceCompat;
 
 import org.lineageos.settings.R;
-import org.lineageos.settings.touchsampling.TouchSamplingUtils;
-import org.lineageos.settings.utils.FileUtils;
 
 public class TouchSamplingSettingsFragment extends PreferenceFragment implements
         OnPreferenceChangeListener {
-
-    private static final String HTSR_ENABLE_KEY = "htsr_enable";
-    public static final String SHAREDHTSR = "SHAREDHTSR";
 
     private SwitchPreferenceCompat mHTSRPreference;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-      addPreferencesFromResource(R.xml.htsr_settings);
-        getActivity().getActionBar().setDisplayHomeAsUpEnabled(true);
-        mHTSRPreference = (SwitchPreferenceCompat) findPreference(HTSR_ENABLE_KEY);
-        if (FileUtils.fileExists(TouchSamplingUtils.HTSR_FILE)) {
-            mHTSRPreference.setEnabled(true);
-            mHTSRPreference.setOnPreferenceChangeListener(this);
-            enableHTSR(0);
-        } else {
-            mHTSRPreference.setSummary(R.string.htsr_enable_summary_not_supported);
-            mHTSRPreference.setEnabled(false);
+        addPreferencesFromResource(R.xml.htsr_settings);
+        if (getActivity().getActionBar() != null) {
+            getActivity().getActionBar().setDisplayHomeAsUpEnabled(true);
         }
+        mHTSRPreference = (SwitchPreferenceCompat) findPreference(
+                TouchSamplingUtils.HTSR_ENABLE_KEY);
+        mHTSRPreference.setOnPreferenceChangeListener(this);
+        updatePreferenceState();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updatePreferenceState();
+    }
+
+    private void updatePreferenceState() {
+        boolean supported = TouchSamplingUtils.isSupported();
+        mHTSRPreference.setEnabled(supported);
+        mHTSRPreference.setSummary(supported ? R.string.htsr_enable_summary
+                : R.string.htsr_enable_summary_not_supported);
+        mHTSRPreference.setChecked(supported && TouchSamplingUtils.isEnabled(getActivity()));
     }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
-        if (HTSR_ENABLE_KEY.equals(preference.getKey())) {
-            enableHTSR((Boolean) newValue ? 1 : 0);
+        if (TouchSamplingUtils.HTSR_ENABLE_KEY.equals(preference.getKey())) {
+            boolean enabled = (Boolean) newValue;
+            if (!TouchSamplingUtils.setEnabled(getActivity(), enabled)) {
+                updatePreferenceState();
+                return false;
+            }
+            return true;
         }
-        return true;
+        return false;
     }
 
     @Override
@@ -68,13 +76,5 @@ public class TouchSamplingSettingsFragment extends PreferenceFragment implements
             return true;
         }
         return false;
-    }
-
-    private void enableHTSR(Integer enable) {
-            FileUtils.writeLine(TouchSamplingUtils.HTSR_FILE, enable.toString());
-            SharedPreferences preferences = getActivity().getSharedPreferences(SHAREDHTSR,Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putInt(SHAREDHTSR, enable);
-            editor.commit();
     }
 }

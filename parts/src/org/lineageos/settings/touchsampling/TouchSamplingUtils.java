@@ -18,31 +18,50 @@
 package org.lineageos.settings.touchsampling;
 
 import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.content.SharedPreferences;
-import android.os.UserHandle;
-import android.provider.Settings;
-import android.util.Log;
 import androidx.preference.PreferenceManager;
 
 import org.lineageos.settings.utils.FileUtils;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.BufferedReader;
-import java.io.FileReader;
-
 public final class TouchSamplingUtils {
 
-    private static final String TAG = "TouchSamplingUtils";
     public static final String HTSR_FILE = "/sys/devices/virtual/touch/touch_dev/bump_sample_rate";
+    public static final String HTSR_ENABLE_KEY = "htsr_enable";
+    private static final String LEGACY_PREFERENCES = "SHAREDHTSR";
+    private static final String LEGACY_ENABLE_KEY = "SHAREDHTSR";
+
+    private TouchSamplingUtils() {
+    }
+
+    public static boolean isSupported() {
+        return FileUtils.isFileWritable(HTSR_FILE);
+    }
+
+    public static boolean isEnabled(Context context) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        if (preferences.contains(HTSR_ENABLE_KEY)) {
+            return preferences.getBoolean(HTSR_ENABLE_KEY, false);
+        }
+
+        // Migrate the setting saved by older builds and keep the user's choice.
+        boolean enabled = context.getSharedPreferences(LEGACY_PREFERENCES, Context.MODE_PRIVATE)
+                .getInt(LEGACY_ENABLE_KEY, 0) == 1;
+        preferences.edit().putBoolean(HTSR_ENABLE_KEY, enabled).apply();
+        return enabled;
+    }
+
+    public static boolean setEnabled(Context context, boolean enabled) {
+        if (!isSupported() || !FileUtils.writeLine(HTSR_FILE, enabled ? "1" : "0")) {
+            return false;
+        }
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putBoolean(HTSR_ENABLE_KEY, enabled).apply();
+        return true;
+    }
 
     public static void restoreSamplingValue(Context context) {
-        SharedPreferences sharedPref = context.getSharedPreferences(TouchSamplingSettingsFragment.SHAREDHTSR, Context.MODE_PRIVATE);
-        Integer htsrstate = sharedPref.getInt(TouchSamplingSettingsFragment.SHAREDHTSR, 0);
-        FileUtils.writeLine(HTSR_FILE, htsrstate.toString());
+        if (isSupported()) {
+            setEnabled(context, isEnabled(context));
+        }
     }
 }
