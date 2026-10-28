@@ -37,7 +37,7 @@ public final class RefreshUtils {
     private static final String KEY_PEAK_REFRESH_RATE = "peak_refresh_rate";
     private static final String KEY_MIN_REFRESH_RATE = "min_refresh_rate";
     private Context mContext;
-    protected static boolean isAppInList = false;
+    protected boolean isAppInList = false;
 
     protected static final int STATE_DEFAULT = 0;
     protected static final int STATE_STANDARD = 1;
@@ -105,6 +105,9 @@ public final class RefreshUtils {
                 }
             }
         };
+
+        isLandscape = mContext.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
 
         if (orientationListener.canDetectOrientation()) {
             orientationListener.enable();
@@ -230,6 +233,11 @@ public final class RefreshUtils {
                 isAppInList = true;
                 return;
             }
+        }
+
+        if (orientationListener != null) {
+            orientationListener.disable();
+            orientationListener = null;
         }
 	    Settings.System.putFloat(mContext.getContentResolver(), KEY_MIN_REFRESH_RATE, minRate);
         Settings.System.putFloat(mContext.getContentResolver(), KEY_PEAK_REFRESH_RATE, maxRate);

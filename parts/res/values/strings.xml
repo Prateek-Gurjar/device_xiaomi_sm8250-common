@@ -62,6 +62,8 @@
 
     <!-- Refresh Rate Settings -->
     <string name="refresh_rate_tile_title">Refresh Rate</string>
+    <string name="per_app_refresh_tile_title">Per-app refresh rate</string>
+    <string name="refresh_rate_unavailable">Refresh rate controls are unavailable</string>
 
     <!-- Touch Control Settings -->
     <string name="touch_control_title">Touch Control</string>

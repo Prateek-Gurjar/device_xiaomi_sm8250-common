@@ -35,11 +35,12 @@ import android.os.RemoteException;
 public class RefreshService extends Service {
 
     private static final String TAG = "RefreshService";
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     private String mPreviousApp;
     private RefreshUtils mRefreshUtils;
     private IActivityTaskManager mActivityTaskManager;
+    private boolean mReceiverRegistered;
 
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -50,16 +51,16 @@ public class RefreshService extends Service {
 
     @Override
     public void onCreate() {
+        super.onCreate();
         if (DEBUG) Log.d(TAG, "Creating service");
+        mRefreshUtils = new RefreshUtils(this);
         try {
             mActivityTaskManager = ActivityTaskManager.getService();
             mActivityTaskManager.registerTaskStackListener(mTaskListener);
         } catch (RemoteException e) {
-            // Do nothing
+            Log.e(TAG, "Unable to register task stack listener", e);
         }
-        mRefreshUtils = new RefreshUtils(this);
         registerReceiver();
-        super.onCreate();
     }
 
     @Override
@@ -73,11 +74,28 @@ public class RefreshService extends Service {
         return null;
     }
 
+    @Override
+    public void onDestroy() {
+        if (mActivityTaskManager != null) {
+            try {
+                mActivityTaskManager.unregisterTaskStackListener(mTaskListener);
+            } catch (RemoteException e) {
+                Log.w(TAG, "Unable to unregister task stack listener", e);
+            }
+        }
+        if (mReceiverRegistered) {
+            unregisterReceiver(mIntentReceiver);
+            mReceiverRegistered = false;
+        }
+        super.onDestroy();
+    }
+
     private void registerReceiver() {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);        
         this.registerReceiver(mIntentReceiver, filter);
+        mReceiverRegistered = true;
     }
 
     private final TaskStackListener mTaskListener = new TaskStackListener() {
@@ -103,7 +121,7 @@ public class RefreshService extends Service {
                     mRefreshUtils.checkOrientationAndSetRate(foregroundApp);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "Unable to apply refresh rate for foreground app", e);
             }
         }
     };
