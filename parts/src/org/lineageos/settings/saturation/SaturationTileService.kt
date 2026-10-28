@@ -24,7 +24,12 @@ import android.service.quicksettings.TileService
 class SaturationTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()
-        updateTile()
+        qsTile?.apply {
+            label = getString(R.string.saturation_tile_label)
+            subtitle = getString(R.string.saturation_tile_subtitle)
+            state = Tile.STATE_ACTIVE
+            updateTile()
+        }
     }
 
     override fun onClick() {
@@ -32,14 +37,13 @@ class SaturationTileService : TileService() {
         val intent = Intent(this, SaturationActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
-        startActivityAndCollapse(pendingIntent)
-    }
-
-    private fun updateTile() {
-        qsTile?.apply {
-            state = Tile.STATE_ACTIVE
-            updateTile()
+        val pendingIntent = PendingIntent.getActivity(this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val launch = Runnable { startActivityAndCollapse(pendingIntent) }
+        if (isLocked) {
+            unlockAndRun(launch)
+        } else {
+            launch.run()
         }
     }
 }

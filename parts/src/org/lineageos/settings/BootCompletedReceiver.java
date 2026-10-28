@@ -37,6 +37,7 @@ import org.lineageos.settings.gpumanager.GpuManagerUtils;
 import org.lineageos.settings.batterymonitor.BatteryMonitorUtils;
 import org.lineageos.settings.display.DcDimmingUtils;
 import org.lineageos.settings.hbm.HBMUtils;
+import org.lineageos.settings.saturation.PerAppSaturationService;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
 
@@ -58,6 +59,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
             ThermalUtils.startService(context);
         }
         RefreshUtils.startService(context);
+        context.startService(new Intent(context, PerAppSaturationService.class));
         TouchSamplingUtils.restoreSamplingValue(context);
         GpuManagerUtils.applySavedSettings(context);
         PocketService.startService(context);

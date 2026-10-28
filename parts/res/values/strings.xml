@@ -165,7 +165,14 @@
     <!-- Saturation -->
     <string name="saturation_title">Display Saturation</string>
     <string name="saturation_summary">Control the saturation level of the display</string>
-    <string name="saturation_footer_summary">Changing the color mode in display settings will override the saturation level, requiring it to be reapplied.</string>
+    <string name="saturation_footer_summary">The selected saturation is applied display-wide. Color mode changes are reapplied automatically. Per-app rules switch this display-wide effect for the foreground app.</string>
+    <string name="per_app_saturation_enable">Per-app saturation</string>
+    <string name="per_app_saturation_enable_summary">Apply the selected saturation based on the foreground app. The color change affects the whole display.</string>
+    <string name="per_app_saturation_apps">Choose apps</string>
+    <string name="per_app_saturation_apps_summary">Unchecked launchable apps use normal saturation while foregrounded. Other system surfaces may still use the display-wide level.</string>
+    <string name="per_app_saturation_app_list">Apps using custom saturation</string>
+    <string name="saturation_tile_label">Saturation settings</string>
+    <string name="saturation_tile_subtitle">Open saturation controls</string>
 
     <!-- Custom seekbar -->
     <string name="custom_seekbar_value">Value: <xliff:g id="v">%s</xliff:g></string>

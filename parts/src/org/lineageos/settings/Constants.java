@@ -21,4 +21,7 @@ public class Constants {
     // Saturation
     public static final String KEY_SATURATION = "saturation";
     public static final String KEY_SATURATION_PREVIEW = "saturation_preview";
+    public static final String KEY_PER_APP_SATURATION_ENABLED = "per_app_saturation_enabled";
+    public static final String KEY_PER_APP_SATURATION_DISABLED_PACKAGES =
+            "per_app_saturation_disabled_packages";
 }
