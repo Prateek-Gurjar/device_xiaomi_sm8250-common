@@ -35,6 +35,7 @@
 
     <SwitchPreference
         android:key="b_pocketmode_sw_pref"
+        android:icon="@drawable/ic_pocket"
         android:title="@string/pocketmode_title" />
 
     <com.android.settingslib.widget.FooterPreference

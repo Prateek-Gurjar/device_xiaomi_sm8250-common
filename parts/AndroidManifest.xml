@@ -459,7 +459,8 @@
         <!-- Pocketservice service -->
         <service
             android:name=".doze.PocketService"
-            android:permission="PocketService">
+            android:directBootAware="true"
+            android:exported="false">
         </service>
 
     </application>
