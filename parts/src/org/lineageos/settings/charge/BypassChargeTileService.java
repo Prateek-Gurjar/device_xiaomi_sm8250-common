@@ -57,8 +57,9 @@ public class BypassChargeTileService extends TileService {
     public void onStartListening() {
         super.onStartListening();
         executorService.execute(() -> {
+            boolean supported = chargeUtils.isBypassChargeSupported();
             boolean enabled = chargeUtils.isBypassChargeEnabled();
-            mainHandler.post(() -> updateTileUI(enabled));
+            mainHandler.post(() -> updateTileUI(supported, enabled));
         });
     }
 
@@ -89,21 +90,36 @@ public class BypassChargeTileService extends TileService {
                     return;
                 }
 
-                chargeUtils.enableBypassCharge(true);
-                mainHandler.post(() -> updateTileUI(true));
+                boolean success = chargeUtils.enableBypassCharge(true);
+                mainHandler.post(() -> {
+                    updateTileUI(chargeUtils.isBypassChargeSupported(),
+                            chargeUtils.isBypassChargeEnabled());
+                    if (!success) {
+                        Toast.makeText(this, R.string.charge_bypass_write_failed,
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
             });
         } else {
-            updateTileUI(false);
             executorService.execute(() -> {
-                chargeUtils.enableBypassCharge(false);
+                boolean success = chargeUtils.enableBypassCharge(false);
+                boolean enabled = chargeUtils.isBypassChargeEnabled();
+                mainHandler.post(() -> {
+                    updateTileUI(chargeUtils.isBypassChargeSupported(), enabled);
+                    if (!success) {
+                        Toast.makeText(this, R.string.charge_bypass_write_failed,
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
             });
         }
     }
 
-    private void updateTileUI(boolean enabled) {
+    private void updateTileUI(boolean supported, boolean enabled) {
         Tile tile = getQsTile();
         if (tile != null) {
-            tile.setState(enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+            tile.setState(!supported ? Tile.STATE_UNAVAILABLE
+                    : enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
             tile.updateTile();
         }
     }

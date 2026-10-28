@@ -19,10 +19,8 @@ package org.lineageos.settings.charge;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.os.BatteryManager;
 import android.util.Log;
-import androidx.preference.PreferenceManager;
 import org.lineageos.settings.utils.FileUtils;
 
 public class ChargeUtils {
@@ -36,17 +34,12 @@ public class ChargeUtils {
     private static final int MAX_BATTERY_TEMP = 450;
     private static final int MIN_BATTERY_CAPACITY = 20;
 
-    private static final String PREF_BYPASS_CHARGE = "bypass_charge";
-
     public static final int BYPASS_DISABLED = 0;
     public static final int BYPASS_ENABLED = 1;
 
     private final Context context;
-    private final SharedPreferences sharedPrefs;
-
     public ChargeUtils(Context context) {
         this.context = context;
-        this.sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
     }
 
     public boolean isBypassChargeEnabled() {
@@ -54,20 +47,20 @@ public class ChargeUtils {
         return "1".equals(value);
     }
 
-    public void enableBypassCharge(boolean enable) {
+    public boolean enableBypassCharge(boolean enable) {
         if (enable) {
             SafetyCheckResult safetyCheck = performSafetyChecks();
             if (!safetyCheck.isSafe()) {
                 Log.w(TAG, "Safety check failed: " + safetyCheck.getReason());
-                return;
+                return false;
             }
         }
 
-        if (FileUtils.writeLine(BYPASS_CHARGE_NODE, enable ? "1" : "0")) {
-            sharedPrefs.edit().putBoolean(PREF_BYPASS_CHARGE, enable).apply();
-        } else {
+        if (!FileUtils.writeLine(BYPASS_CHARGE_NODE, enable ? "1" : "0")) {
             Log.e(TAG, "Failed to write bypass charge status");
+            return false;
         }
+        return isBypassChargeEnabled() == enable;
     }
 
     private boolean isNodeAccessible(String node) {
@@ -83,11 +76,14 @@ public class ChargeUtils {
             return new SafetyCheckResult(false, "Bypass charging not supported on this device");
         }
 
-        if (!isACChargerConnected()) {
-            return new SafetyCheckResult(false, "AC charger not connected");
+        if (!isExternalPowerConnected()) {
+            return new SafetyCheckResult(false, "No charger connected");
         }
 
         int batteryTemp = getBatteryTemperature();
+        if (batteryTemp <= 0) {
+            return new SafetyCheckResult(false, "Unable to read battery temperature");
+        }
         if (batteryTemp >= MAX_BATTERY_TEMP) {
             return new SafetyCheckResult(false, 
                 String.format("Battery temperature too high (%.1f°C)", batteryTemp / 10.0f));
@@ -102,7 +98,7 @@ public class ChargeUtils {
         return new SafetyCheckResult(true, "All safety checks passed");
     }
 
-    private boolean isACChargerConnected() {
+    private boolean isExternalPowerConnected() {
         IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         Intent batteryStatus = context.registerReceiver(null, filter);
 
@@ -111,9 +107,11 @@ public class ChargeUtils {
         }
 
         int chargePlug = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-        boolean isCharging = chargePlug == BatteryManager.BATTERY_PLUGGED_AC;
+        boolean isCharging = chargePlug == BatteryManager.BATTERY_PLUGGED_AC
+                || chargePlug == BatteryManager.BATTERY_PLUGGED_USB
+                || chargePlug == BatteryManager.BATTERY_PLUGGED_WIRELESS;
 
-        Log.d(TAG, "Charger status - plugged: " + chargePlug + ", isAC: " + isCharging);
+        Log.d(TAG, "Charger status - plugged: " + chargePlug + ", connected: " + isCharging);
         return isCharging;
     }
 
@@ -137,7 +135,7 @@ public class ChargeUtils {
         }
 
         Log.w(TAG, "Unable to read battery temperature");
-        return 0;
+        return -1;
     }
 
     private int getBatteryCapacity() {

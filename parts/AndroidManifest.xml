@@ -383,7 +383,7 @@
         <service
             android:name=".charge.BypassChargeTileService"
             android:exported="true"
-            android:icon="@drawable/charger_24px"
+            android:icon="@drawable/ic_bypass_charging_tile"
             android:label="@string/charge_bypass_title"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>

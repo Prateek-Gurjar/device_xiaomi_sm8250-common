@@ -65,7 +65,11 @@ public class ChargeSettingsFragment extends Fragment {
             if (enabled) {
                 requestEnable();
             } else {
-                mChargeUtils.enableBypassCharge(false);
+                boolean success = mChargeUtils.enableBypassCharge(false);
+                setSwitchChecked(mChargeUtils.isBypassChargeEnabled());
+                if (!success) {
+                    showWriteFailure();
+                }
                 updateTile();
             }
         });
@@ -96,13 +100,24 @@ public class ChargeSettingsFragment extends Fragment {
                 .setTitle(R.string.charge_bypass_title)
                 .setMessage(R.string.charge_bypass_warning)
                 .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                    mChargeUtils.enableBypassCharge(true);
+                    boolean enabled = mChargeUtils.enableBypassCharge(true);
                     setSwitchChecked(mChargeUtils.isBypassChargeEnabled());
+                    if (!enabled) {
+                        showWriteFailure();
+                    }
                     updateTile();
                 })
                 .setNegativeButton(android.R.string.cancel,
                         (dialog, which) -> setSwitchChecked(false))
                 .setOnCancelListener(dialog -> setSwitchChecked(false))
+                .show();
+    }
+
+    private void showWriteFailure() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.charge_bypass_title)
+                .setMessage(R.string.charge_bypass_write_failed)
+                .setPositiveButton(android.R.string.ok, null)
                 .show();
     }
 
