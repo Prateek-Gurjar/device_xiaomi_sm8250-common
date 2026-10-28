@@ -34,6 +34,7 @@ import org.lineageos.settings.refreshrate.RefreshUtils;
 import org.lineageos.settings.touchsampling.TouchSamplingUtils;
 import org.lineageos.settings.utils.FileUtils;
 import org.lineageos.settings.gpumanager.GpuManagerUtils;
+import org.lineageos.settings.batterymonitor.BatteryMonitorUtils;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
 
@@ -59,6 +60,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         TouchSamplingUtils.restoreSamplingValue(context);
         GpuManagerUtils.applySavedSettings(context);
         PocketService.startService(context);
+        BatteryMonitorUtils.start(context);
         FileUtils.enableService(context);
         overrideHdrTypes(context);
 

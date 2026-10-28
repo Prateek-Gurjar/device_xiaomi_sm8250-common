@@ -260,4 +260,6 @@
     <string name="core_5">Core 5 (Big)</string>
     <string name="core_6">Core 6 (Big)</string>
     <string name="core_7">Core 7 (Prime)</string>
+    <string name="battery_monitor_title">Battery monitor</string>
+    <string name="battery_monitor_summary">Battery readings and usage estimates</string>
 </resources>
