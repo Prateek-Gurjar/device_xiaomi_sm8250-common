@@ -6,3 +6,6 @@ allow system_app sysfs_zram:file { getattr open read };
 # Charge Bypass
 allow system_app vendor_sysfs_battery_supply:dir search;
 allow system_app vendor_sysfs_battery_supply:file { getattr open read write };
+
+# KProfiles runs as system_app and controls its sysfs parameters.
+allow system_app sysfs_kprofiles:file rw_file_perms;
