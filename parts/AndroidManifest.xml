@@ -167,7 +167,7 @@
         <service
             android:name=".kernelmanager.KernelManagerTileService"
             android:exported="true"
-            android:icon="@drawable/ic_settings_popup"
+            android:icon="@drawable/ic_cpu_manager_tile"
             android:label="@string/kernel_manager_tile"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
@@ -247,6 +247,7 @@
         <activity
             android:name=".kernelmanager.KernelManagerActivity"
             android:exported="true"
+            android:icon="@drawable/ic_cpu_manager_tile"
             android:label="@string/kernel_manager_title"
             android:theme="@style/Theme.SubSettingsBase">
             <intent-filter>
@@ -258,6 +259,12 @@
             <meta-data
                 android:name="com.android.settings.summary"
                 android:resource="@string/kernel_manager_summary" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_cpu_manager_tile" />
+            <meta-data
+                android:name="com.android.settings.icon_tintable"
+                android:value="true" />
         </activity>
 
         <activity
