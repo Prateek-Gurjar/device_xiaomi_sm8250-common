@@ -28,6 +28,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -60,9 +61,14 @@ public class ClearSpeakerFragment extends Fragment {
         mActionButton.setOnClickListener(v -> {
             if (mPlaying) {
                 stopPlaying();
-            } else if (startPlaying()) {
-                mHandler.removeCallbacksAndMessages(null);
-                mHandler.postDelayed(this::stopPlaying, PLAY_DURATION_MS);
+            } else {
+                if (startPlaying()) {
+                    mHandler.removeCallbacksAndMessages(null);
+                    mHandler.postDelayed(this::stopPlaying, PLAY_DURATION_MS);
+                } else {
+                    Toast.makeText(requireContext(), R.string.clear_speaker_playback_error,
+                            Toast.LENGTH_LONG).show();
+                }
             }
         });
         updateButton();
@@ -77,18 +83,19 @@ public class ClearSpeakerFragment extends Fragment {
     private boolean startPlaying() {
         requireActivity().setVolumeControlStream(AudioManager.STREAM_MUSIC);
         MediaPlayer player = new MediaPlayer();
-        player.setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build());
-        player.setLooping(true);
-        player.setOnErrorListener((mediaPlayer, what, extra) -> {
-            stopPlaying();
-            return true;
-        });
-
         try (AssetFileDescriptor afd = getResources().openRawResourceFd(
                 R.raw.clear_speaker_sound)) {
+            player.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build());
+            player.setLooping(true);
+            player.setOnErrorListener((mediaPlayer, what, extra) -> {
+                if (mMediaPlayer == mediaPlayer) {
+                    stopPlaying();
+                }
+                return true;
+            });
             player.setDataSource(afd);
             player.setVolume(1.0f, 1.0f);
             player.prepare();
@@ -100,6 +107,8 @@ public class ClearSpeakerFragment extends Fragment {
         } catch (IOException | IllegalArgumentException | IllegalStateException e) {
             Log.e(TAG, "Failed to play speaker clean sound", e);
             player.release();
+            mPlaying = false;
+            updateButton();
             return false;
         }
     }
