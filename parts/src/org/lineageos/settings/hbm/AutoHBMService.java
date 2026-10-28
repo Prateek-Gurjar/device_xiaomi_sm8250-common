@@ -35,7 +35,6 @@ public class AutoHBMService extends Service {
     Sensor mLightSensor;
 
     private SharedPreferences mSharedPrefs;
-    private boolean dcDimmingEnabled;
 
     public void activateLightSensorRead() {
         submit(() -> {
@@ -87,6 +86,8 @@ public class AutoHBMService extends Service {
             boolean keyguardShowing = km.inKeyguardRestrictedInputMode();
             float luxThreshold = Float.parseFloat(mSharedPrefs.getString(HBMFragment.KEY_AUTO_HBM_THRESHOLD, "7000"));
             long timeToDisableHBM = Long.parseLong(mSharedPrefs.getString(HBMFragment.KEY_HBM_DISABLE_TIME, "1"));
+            boolean dcDimmingEnabled = mSharedPrefs.getBoolean(
+                    DcDimmingTileService.DC_DIMMING_ENABLE_KEY, false);
 
             if (lux > luxThreshold) {
                 if ((!mAutoHBMActive || !isCurrentlyEnabled()) && !keyguardShowing && !dcDimmingEnabled) {
