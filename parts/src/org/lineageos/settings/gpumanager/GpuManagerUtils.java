@@ -40,8 +40,14 @@ public final class GpuManagerUtils {
 
     public static boolean isAvailable() {
         return !getFrequencies().isEmpty() && !getGovernors().isEmpty()
-                && new File(BASE + "/devfreq/min_freq").canRead()
-                && new File(BASE + "/devfreq/max_freq").canRead();
+                && isReadableAndWritable(BASE + "/devfreq/governor")
+                && isReadableAndWritable(BASE + "/devfreq/min_freq")
+                && isReadableAndWritable(BASE + "/devfreq/max_freq");
+    }
+
+    private static boolean isReadableAndWritable(String path) {
+        File node = new File(path);
+        return node.canRead() && node.canWrite();
     }
 
     public static boolean isToggleAvailable(String node) {
