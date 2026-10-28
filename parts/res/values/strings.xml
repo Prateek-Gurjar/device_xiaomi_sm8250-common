@@ -19,6 +19,18 @@
 
     <!-- Xiaomi Settings -->
     <string name="app_title">Xiaomi Settings</string>
+    <string name="extras_title">Extras</string>
+    <string name="extras_summary">Display, performance, sound and device controls</string>
+    <string name="extras_display_category">Display &amp; UI</string>
+    <string name="extras_performance_category">Performance</string>
+    <string name="extras_sound_category">Sound</string>
+    <string name="extras_battery_category">Battery</string>
+    <string name="extras_device_category">Device</string>
+    <string name="extras_item_unavailable">This control is not available on this build</string>
+    <string name="extras_pocket_mode">Pocket mode</string>
+    <string name="extras_pocket_summary">Reduce accidental screen wakeups while the phone is covered</string>
+    <string name="extras_kprofiles">KProfiles</string>
+    <string name="extras_kprofiles_summary">Choose battery, balanced or performance kernel profiles</string>
     <string name="tile_add">Add tile</string>
     <string name="tile_added">Tile added</string>
     <string name="tile_not_added">Tile not added</string>

@@ -29,7 +29,7 @@ import android.content.Context;
 import android.content.Intent;
 
 import io.github.maytinhdibo.pocket.PocketUtils;
-import io.github.maytinhdibo.pocket.PocketPreferenceFragment;
+import io.github.maytinhdibo.pocket.PocketUtils;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
 
@@ -38,10 +38,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(final Context context, Intent intent) {
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            //just check on boot
-            boolean isEnable = context.getSharedPreferences(PocketPreferenceFragment.BATTERY_POCKET_MODE, Context.MODE_PRIVATE)
-                    .getBoolean("enable", false);
-            if (isEnable) PocketUtils.startService(context);
+            if (PocketUtils.isEnabled(context)) PocketUtils.startService(context);
         }
     }
 }

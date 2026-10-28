@@ -43,7 +43,7 @@ import io.github.maytinhdibo.pocket.receiver.PhoneStateReceiver;
 
 public class PocketService extends Service {
     private static final String TAG = "PocketMode";
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     private static final int EVENT_UNLOCK = 2;
     private static final int EVENT_TURN_ON_SCREEN = 1;
@@ -103,11 +103,11 @@ public class PocketService extends Service {
     }
 
     private void enableSensor() {
+        if (proximitySensor == null || isSensorRunning) return;
         if (DEBUG) Log.d(TAG, "Enable proximity sensor");
-        sensorManager.registerListener(proximitySensorEventListener,
+        isSensorRunning = sensorManager.registerListener(proximitySensorEventListener,
                 proximitySensor,
                 SensorManager.SENSOR_DELAY_NORMAL);
-        isSensorRunning = true;
     }
 
     private BroadcastReceiver mScreenStateReceiver = new BroadcastReceiver() {

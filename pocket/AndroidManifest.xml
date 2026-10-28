@@ -69,30 +69,32 @@
 
         <service
             android:name=".PocketService"
-            android:permission="PocketService"></service>
+            android:exported="false" />
 
         <!-- use theme as setting remove android:theme if not need it -->
         <activity
             android:name=".PocketPreferenceActivity"
+            android:exported="true"
             android:label="@string/pocketmode_short_title"
             android:theme="@style/Theme.SubSettingsBase">
             <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
-
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.display" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/pocketmode_summary" />
-            <meta-data
-                android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_pocket" />
-            <meta-data
-                android:name="com.android.settings.icon_tintable"
-                android:value="true" />
         </activity>
+
+        <service
+            android:name=".PocketModeTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_pocket"
+            android:label="@string/pocketmode_short_title"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
 
     </application>
 </manifest>

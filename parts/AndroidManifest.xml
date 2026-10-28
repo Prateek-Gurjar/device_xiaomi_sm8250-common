@@ -26,6 +26,8 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <package android:name="com.android.kprofiles" />
+        <package android:name="io.github.maytinhdibo.pocket" />
     </queries>
 
     <uses-permission android:name="android.permission.GET_TASKS" />
@@ -51,6 +53,28 @@
         android:defaultToDeviceProtectedStorage="true"
         android:directBootAware="true">
 
+        <activity
+            android:name=".extras.ExtrasActivity"
+            android:exported="true"
+            android:label="@string/extras_title"
+            android:theme="@style/Theme.SubSettingsBase.Expressive">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.system" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/extras_summary" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_extras" />
+            <meta-data
+                android:name="com.android.settings.icon_tintable"
+                android:value="true" />
+        </activity>
+
         <receiver
             android:name=".BootCompletedReceiver"
             android:exported="false">
@@ -74,13 +98,6 @@
             android:exported="false"
             android:label="@string/dirac_title"
             android:theme="@style/Theme.SubSettingsBase">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <meta-data android:name="com.android.settings.category"
-                       android:value="com.android.settings.category.ia.sound" />
-            <meta-data android:name="com.android.settings.summary"
-                       android:resource="@string/dirac_summary" />
         </activity>
 
         <service
@@ -112,12 +129,6 @@
         <activity android:name=".batterymonitor.BatteryMonitorActivity"
             android:exported="false" android:label="@string/battery_monitor_title"
             android:theme="@style/Theme.SubSettingsBase.Expressive">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            <meta-data android:name="com.android.settings.category" android:value="com.android.settings.category.ia.battery" />
-            <meta-data android:name="com.android.settings.summary" android:resource="@string/battery_monitor_summary" />
         </activity>
 
         <service
@@ -211,25 +222,6 @@
             android:exported="false"
             android:label="@string/thermal_title"
             android:theme="@style/Theme.SubSettingsBase.Expressive">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.system" />
-            <meta-data
-                android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_settings_thermal" />
-            <meta-data
-                android:name="com.android.settings.icon_tintable"
-                android:value="true" />
-            <meta-data
-                android:name="com.android.settings.order"
-                android:value="-255" />
-	    <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/thermal_summary" />
         </activity>
 
         <activity
@@ -237,21 +229,6 @@
             android:exported="true"
             android:label="@string/core_control_title"
             android:theme="@style/Theme.SubSettingsBase">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.battery" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/core_control_summary" />
-            <meta-data
-                android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_settings_core_control" />
-            <meta-data
-                android:name="com.android.settings.icon_tintable"
-                android:value="true" />
         </activity>
 
         <activity
@@ -260,21 +237,6 @@
             android:icon="@drawable/ic_cpu_manager_tile"
             android:label="@string/kernel_manager_title"
             android:theme="@style/Theme.SubSettingsBase">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.battery" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/kernel_manager_summary" />
-            <meta-data
-                android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_cpu_manager_tile" />
-            <meta-data
-                android:name="com.android.settings.icon_tintable"
-                android:value="true" />
         </activity>
 
         <activity
@@ -283,23 +245,8 @@
             android:label="@string/gpu_manager_title"
             android:theme="@style/Theme.SubSettingsBase">
             <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.battery" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/gpu_manager_summary" />
-            <meta-data
-                android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_gpu_manager_tile" />
-            <meta-data
-                android:name="com.android.settings.icon_tintable"
-                android:value="true" />
         </activity>
 
         <service
@@ -330,22 +277,6 @@
             android:icon="@drawable/ic_per_app_refresh_rate"
             android:exported="true"
             android:theme="@style/Theme.SubSettingsBase.Expressive">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.display" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/refresh_summary" />
-            <meta-data
-                android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_per_app_refresh_rate" />
-            <meta-data
-                android:name="com.android.settings.icon_tintable"
-                android:value="true" />
         </activity>
 
         <service
@@ -359,15 +290,6 @@
             android:label="@string/htsr_enable_title"
             android:theme="@style/Theme.SubSettingsBase"
             android:exported="true">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.display" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/htsr_enable_summary" />
         </activity>
 
         <activity
@@ -375,16 +297,6 @@
             android:label="@string/dc_dimming_enable_title"
             android:exported="true"
             android:theme="@style/Theme.SubSettingsBase">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.display" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/dc_dimming_enable_summary" />
         </activity>
 
 
@@ -393,21 +305,6 @@
             android:label="@string/hbm_fragment_title"
             android:exported="false"
             android:theme="@style/Theme.SubSettingsBase.Expressive">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.display" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/hbm_fragment_summary" />
-            <meta-data
-                android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_hbm_tile" />
-            <meta-data
-                android:name="com.android.settings.icon_tintable"
-                android:value="true" />
         </activity>
 
         <activity 
@@ -437,15 +334,6 @@
             android:label="@string/charge_bypass_title"
             android:exported="true"
             android:theme="@style/Theme.SubSettingsBase.Expressive">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.battery" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/charge_bypass_summary" />
         </activity>
 
         <service
@@ -481,21 +369,6 @@
             android:label="@string/saturation_title"
             android:exported="true"
             android:theme="@style/Theme.SubSettingsBase.Expressive">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.display" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/saturation_summary" />
-            <meta-data
-                android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_saturation_tile" />
-            <meta-data
-                android:name="com.android.settings.icon_tintable"
-                android:value="true" />
         </activity>
 
         <activity
@@ -509,15 +382,6 @@
             android:exported="false"
             android:label="@string/clear_speaker_title"
             android:theme="@style/Theme.SubSettingsBase.Expressive">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.sound" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/clear_speaker_summary" />
         </activity>
 
         <service
@@ -535,7 +399,8 @@
         <service
             android:name=".doze.PocketService"
             android:directBootAware="true"
-            android:exported="false">
+            android:exported="true"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS">
         </service>
 
     </application>

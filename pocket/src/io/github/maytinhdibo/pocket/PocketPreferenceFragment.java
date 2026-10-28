@@ -25,15 +25,11 @@
 package io.github.maytinhdibo.pocket;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragment;
 import androidx.preference.SwitchPreference;
-import android.app.ActionBar;
-import android.app.Activity;
 
 public class PocketPreferenceFragment extends PreferenceFragment
         implements Preference.OnPreferenceChangeListener {
@@ -50,6 +46,11 @@ public class PocketPreferenceFragment extends PreferenceFragment
     @Override
     public void onResume() {
         super.onResume();
+        boolean enabled = PocketUtils.isEnabled(getActivity());
+        modeSwitch.setChecked(enabled);
+        boolean available = PocketUtils.isSupported(getActivity());
+        modeSwitch.setEnabled(available);
+        modeSwitch.setSummary(available ? null : getString(R.string.pocketmode_unavailable));
     }
 
     @SuppressLint("ResourceType")
@@ -66,16 +67,8 @@ public class PocketPreferenceFragment extends PreferenceFragment
         boolean value = (Boolean) newValue;
 
         if (preference.getKey().equals(BATTERY_POCKET_MODE)) {
-            SharedPreferences.Editor editor = getActivity().getSharedPreferences(BATTERY_POCKET_MODE, Activity.MODE_PRIVATE)
-                    .edit();
-            editor.putBoolean("enable", value);
-            editor.commit();
-
-            if (value) {
-                PocketUtils.startService(getContext());
-            } else {
-                PocketUtils.stopService(getContext());
-            }
+            PocketUtils.setEnabled(getContext(), value);
+            PocketModeTileService.refresh(getContext());
         }
         return true;
     }

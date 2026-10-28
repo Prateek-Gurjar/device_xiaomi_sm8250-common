@@ -62,7 +62,10 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         context.startService(new Intent(context, PerAppSaturationService.class));
         TouchSamplingUtils.restoreSamplingValue(context);
         GpuManagerUtils.applySavedSettings(context);
-        PocketService.startService(context);
+        if (android.provider.Settings.Secure.getInt(context.getContentResolver(),
+                "xiaomi_pocket_mode_enabled", 1) == 1) {
+            PocketService.startService(context);
+        }
         BatteryMonitorUtils.start(context);
         HBMUtils.disableForScreenOff(context);
         FileUtils.enableService(context);
