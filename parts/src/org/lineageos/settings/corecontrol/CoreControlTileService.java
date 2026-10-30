@@ -7,6 +7,7 @@ package org.lineageos.settings.corecontrol;
 import android.content.Intent;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
+import org.lineageos.settings.R;
 
 /** Quick Settings shortcut to the per-core controls. */
 public class CoreControlTileService extends TileService {

@@ -2,8 +2,14 @@ package org.lineageos.settings.batterymonitor;
 
 import android.app.*;
 import android.content.*;
-import android.os.*;
+import android.os.Build;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.PowerManager;
+import android.os.SystemClock;
 import android.util.Log;
+import org.lineageos.settings.R;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.ArrayList;

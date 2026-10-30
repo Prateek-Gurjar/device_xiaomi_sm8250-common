@@ -85,7 +85,7 @@ public class BypassChargeTileService extends TileService {
                                 getString(R.string.charge_bypass_safety_failed, 
                                         safetyCheck.getReason()),
                                 Toast.LENGTH_LONG).show();
-                        updateTileUI(false);
+                        updateTileUI(chargeUtils.isBypassChargeSupported(), false);
                     });
                     return;
                 }
